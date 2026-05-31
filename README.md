@@ -86,6 +86,14 @@ git push origin main
 
 ## Despliegue en Railway
 
+### Web en Railway + API en tu PC (local)
+
+Railway **no puede** usar `http://localhost:56398` directamente. Necesitas exponer tu API con **ngrok** y configurar `VITE_API_BASE_URL` con esa URL pública.
+
+**Guía completa paso a paso:** [RAILWAY_BACKEND_LOCAL.md](./RAILWAY_BACKEND_LOCAL.md)
+
+### Web en Railway + API en Railway / Supabase
+
 ### 1. Crear servicio
 
 1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**.

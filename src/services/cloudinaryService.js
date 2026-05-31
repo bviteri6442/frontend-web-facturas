@@ -1,4 +1,4 @@
-// Servicio de subida de imágenes a Cloudinary
+// Servicio de subida de imagenes a Cloudinary
 const CLOUD_NAME = 'dotoxykvr'
 const UPLOAD_PRESET = 'ml_default'
 const UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
@@ -20,7 +20,11 @@ export async function uploadToCloudinary(file) {
 
   if (!response.ok) {
     let detail = ''
-    try { detail = (await response.json()).error?.message || '' } catch (_) {}
+    try {
+      detail = (await response.json()).error?.message || ''
+    } catch (_) {
+      /* ignore */
+    }
     throw new Error(`Cloudinary ${response.status}: ${detail}`)
   }
 
