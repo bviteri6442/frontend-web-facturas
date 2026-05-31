@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de Gestión Comercial - Punto de Venta">
+    <title>Punto de Venta - PuntoVenta</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.0/dist/sweetalert2.min.css">
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.0/dist/sweetalert2.all.min.js"></script>
+    
+    <!-- Estilos principales -->
+    <link rel="stylesheet" href="/src/assets/styles/main.css" />
+  </head>
+  <body>
+    <!-- App Container -->
+    <div id="app">
+      <!-- Sidebar Navigation -->
+      <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <h1 class="logo"><i class="fas fa-store" aria-hidden="true"></i> PuntoVenta</h1>
+        </div>
+        <ul class="nav-menu" id="navMenu">
+          <!-- Menú General -->
+          <li class="nav-item">
+            <a href="#" data-page="dashboard" class="nav-link">
+              <i class="fas fa-chart-line"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#" data-page="clientes" class="nav-link">
+              <i class="fas fa-users"></i>
+              <span>Clientes</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#" data-page="productos" class="nav-link">
+              <i class="fas fa-box"></i>
+              <span>Productos</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#" data-page="ventas" class="nav-link">
+              <i class="fas fa-file-invoice-dollar"></i>
+              <span>Facturas</span>
+            </a>
+          </li>
+
+          <!-- Divisor Admin -->
+          <li class="sidebar-divider" id="adminDivider" style="display:none"></li>
+
+          <!-- Menú Admin -->
+          <li class="nav-item" id="usuariosMenu" style="display:none">
+            <a href="#" data-page="usuarios" class="nav-link">
+              <i class="fas fa-user-shield"></i>
+              <span>Usuarios</span>
+            </a>
+          </li>
+          <li class="nav-item" id="elim-usuariosMenu" style="display:none">
+            <a href="#" data-page="eliminaciones-usuarios" class="nav-link">
+              <i class="fas fa-user-slash"></i>
+              <span>Baja de usuarios</span>
+            </a>
+          </li>
+          <li class="nav-item" id="elim-clientesMenu" style="display:none">
+            <a href="#" data-page="eliminaciones-clientes" class="nav-link">
+              <i class="fas fa-user-times"></i>
+              <span>Baja de clientes</span>
+            </a>
+          </li>
+          <li class="nav-item" id="elim-productosMenu" style="display:none">
+            <a href="#" data-page="eliminaciones-productos" class="nav-link">
+              <i class="fas fa-box-archive"></i>
+              <span>Baja de productos</span>
+            </a>
+          </li>
+          <li class="nav-item" id="elim-ventasMenu" style="display:none">
+            <a href="#" data-page="eliminaciones-ventas" class="nav-link">
+              <i class="fas fa-trash-restore"></i>
+              <span>Baja de facturas</span>
+            </a>
+          </li>
+
+          <li class="sidebar-divider" id="logsDiv" style="display:none"></li>
+
+          <li class="nav-item" id="logsMenu" style="display:none">
+            <a href="#" data-page="logs" class="nav-link">
+              <i class="fas fa-clipboard-list"></i>
+              <span>Logs</span>
+            </a>
+          </li>
+
+          <li class="nav-item" id="auditoriaMenu" style="display:none">
+            <a href="#" data-page="auditoria" class="nav-link">
+              <i class="fas fa-history"></i>
+              <span>Auditoría</span>
+            </a>
+          </li>
+
+          <!-- Cerrar Sesión -->
+          <li class="nav-item">
+            <a href="#" id="logoutBtn" class="nav-link text-danger">
+              <i class="fas fa-sign-out-alt"></i>
+              <span>Cerrar Sesión</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-content">
+          <div class="user-info" id="userInfoBtn" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
+            <div class="user-avatar-icon">
+              <i class="fas fa-user-circle"></i>
+            </div>
+            <span id="userNameDisplay">Usuario</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content Area -->
+      <main class="main-content" id="mainContent">
+        <!-- Las páginas se cargarán aquí -->
+      </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modalContainer"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

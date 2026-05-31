@@ -1,0 +1,113 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Inicio de sesión - Punto de Venta">
+    <title>Iniciar sesión - PuntoVenta</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="/src/assets/styles/main.css">
+    <link rel="stylesheet" href="/src/assets/styles/login.css">
+  </head>
+  <body class="login-page">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <div class="login-logo-icon" aria-hidden="true">
+            <i class="fas fa-store"></i>
+          </div>
+          <h1>PuntoVenta</h1>
+          <p>Sistema de gestión comercial</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="email">Correo electrónico</label>
+            <input type="email" id="email" name="email" placeholder="Ingrese su correo" required autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label for="contrasena">Contraseña</label>
+            <div class="password-container">
+              <input type="password" id="contrasena" name="contrasena" placeholder="Ingrese su contraseña" required autocomplete="current-password">
+              <button type="button" class="toggle-password" id="togglePassword" aria-label="Mostrar u ocultar contraseña">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="login-btn" id="loginBtn">
+            <i class="fas fa-right-to-bracket"></i>
+            Iniciar sesión
+          </button>
+        </form>
+
+        <div class="demo-credentials">
+          <p><strong>Credenciales de demostración</strong></p>
+          <p>Correo: <strong>admin@test.com</strong></p>
+          <p>Contraseña: <strong>Password123!</strong></p>
+        </div>
+
+        <div class="login-footer">
+          <p>¿No tiene cuenta? <span class="register-link" id="registerLink">Regístrese aquí</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="registerModal">
+      <div class="modal global-modal-dialog" style="max-width:500px;margin:auto">
+        <div class="global-modal-header">
+          <h2 style="margin:0;font-size:1.15rem">Crear cuenta</h2>
+          <button type="button" class="global-modal-close" id="closeRegisterModal" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-error" id="registerError"></div>
+          <div class="modal-success" id="registerSuccess"></div>
+          <form id="registerForm">
+            <div class="form-group">
+              <label for="regEmail">Correo electrónico</label>
+              <input type="email" id="regEmail" name="email" placeholder="usuario@ejemplo.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label for="regNombreUsuario">Nombre de usuario</label>
+              <input type="text" id="regNombreUsuario" name="nombreUsuario" placeholder="Ej.: juan_perez" maxlength="20" required>
+            </div>
+            <div class="form-group">
+              <label for="regNombre">Nombre</label>
+              <input type="text" id="regNombre" name="nombre" placeholder="Nombre" maxlength="20" required>
+            </div>
+            <div class="form-group">
+              <label for="regApellido">Apellido</label>
+              <input type="text" id="regApellido" name="apellido" placeholder="Apellido" maxlength="20" required>
+            </div>
+            <div class="form-group">
+              <label for="regContrasena">Contraseña</label>
+              <div class="password-container">
+                <input type="password" id="regContrasena" name="contrasena" placeholder="Mín. 8 caracteres, mayúscula, número y símbolo" required>
+                <button type="button" class="toggle-password" id="toggleRegPassword" aria-label="Mostrar contraseña"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="regConfirmContrasena">Confirmar contraseña</label>
+              <div class="password-container">
+                <input type="password" id="regConfirmContrasena" name="confirmContrasena" placeholder="Repita la contraseña" required>
+                <button type="button" class="toggle-password" id="toggleRegConfirmPassword" aria-label="Mostrar contraseña"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="registerBtn" style="width:100%">
+              <i class="fas fa-user-plus"></i> Crear cuenta
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/login.js"></script>
+  </body>
+</html>

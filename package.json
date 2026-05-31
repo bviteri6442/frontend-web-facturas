@@ -1,0 +1,21 @@
+{
+  "name": "punto-venta-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite preview --host 0.0.0.0 --port 3000"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.2.0",
+    "axios": "^1.6.7",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+    "sweetalert2": "^11.10.7"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}
