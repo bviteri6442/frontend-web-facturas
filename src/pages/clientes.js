@@ -14,6 +14,8 @@ export class Clientes {
     this.searchTerm = ''
     this.currentPage = 1
     this.itemsPerPage = ITEMS_PER_PAGE
+    this.serverTotal = 0
+    this.searchDebounce = null
     this.pagination = null
     this.loading = false
     this.editingId = null
@@ -120,8 +122,8 @@ export class Clientes {
       searchBox.addEventListener('input', (e) => {
         this.searchTerm = e.target.value
         this.currentPage = 1
-        this.filterClientes()
-        this.updateTableAndPagination()
+        clearTimeout(this.searchDebounce)
+        this.searchDebounce = setTimeout(() => this.loadClientes(), 400)
       })
     }
 
@@ -157,23 +159,18 @@ export class Clientes {
   async loadClientes() {
     this.loading = true
     try {
-      console.log('[CLIENTES] Cargando desde backend...')
-      const clientes = await clienteService.getAll()
-      
-      // Filtrar SOLO clientes activos (no eliminados)
-      const clientesActivos = Array.isArray(clientes) ? clientes.filter(c => c.activo !== false) : []
-      this.clientes = clientesActivos
-      
-      // Ordenar por FechaCreacion descendente (más nuevo primero)
-      this.clientes.sort((a, b) => {
-        const fechaA = new Date(a.fechaCreacion || 0)
-        const fechaB = new Date(b.fechaCreacion || 0)
-        return fechaB - fechaA
+      console.log('[CLIENTES] Cargando página', this.currentPage, 'desde backend...')
+      const { data, total } = await clienteService.getPage({
+        page: this.currentPage,
+        limit: this.itemsPerPage,
+        search: this.searchTerm,
+        activo: true
       })
-      
-      console.log('[CLIENTES] Cargados:', this.clientes.length)
-      this.filterClientes()
-      this.setupPagination()
+      this.clientes = data
+      this.filteredClientes = data
+      this.serverTotal = total
+      console.log('[CLIENTES] Página cargada:', data.length, 'de', total)
+      if (!this.pagination) this.setupPagination()
       this.updateTableAndPagination()
     } catch (error) {
       console.error('[CLIENTES] Error cargando:', error)
@@ -191,53 +188,19 @@ export class Clientes {
     }
   }
 
-  filterClientes() {
-    if (!this.searchTerm || !this.searchTerm.trim()) {
-      this.filteredClientes = [...this.clientes]
-      return
-    }
-
-    const term = this.searchTerm.toString().toLowerCase()
-    const termSinFormato = this.searchTerm.toString().replace(/[^0-9]/g, '') // Para buscar sin formato
-
-    this.filteredClientes = this.clientes.filter(c => {
-      try {
-        const nombre = (c.nombre || '').toString().toLowerCase()
-        const cedula = (c.cedula || '').toString()
-        const documento = (c.documento || '').toString()
-        const email = (c.email || c.correo || '').toString().toLowerCase()
-        const telefono = (c.telefono || '').toString().replace(/[^0-9]/g, '')
-
-        return (
-          (nombre && nombre.includes(term)) ||
-          (cedula && cedula.includes(term)) ||
-          (documento && documento.includes(term)) ||
-          (email && email.includes(term)) ||
-          (telefono && termSinFormato && telefono.includes(termSinFormato))
-        )
-      } catch (err) {
-        console.warn('[CLIENTES] Error filtrando cliente', err)
-        return false
-      }
-    })
-    
-  }
-
   getPaginatedClientes() {
-    const start = (this.currentPage - 1) * this.itemsPerPage
-    const end = start + this.itemsPerPage
-    return this.filteredClientes.slice(start, end)
+    return this.filteredClientes
   }
 
   setupPagination() {
     this.pagination = new PaginationAdvanced({
-      currentPage: 1,
-      totalPages: Math.ceil(this.filteredClientes.length / this.itemsPerPage) || 1,
-      totalItems: this.filteredClientes.length,
+      currentPage: this.currentPage,
+      totalPages: Math.ceil(this.serverTotal / this.itemsPerPage) || 1,
+      totalItems: this.serverTotal,
       itemsPerPage: this.itemsPerPage,
       onChange: (page) => {
         this.currentPage = page
-        this.updateTableAndPagination()
+        this.loadClientes()
       }
     })
     
@@ -247,7 +210,7 @@ export class Clientes {
   renderPagination() {
     const container = document.getElementById('pagination-container')
     if (container && this.pagination) {
-      this.pagination.update(this.filteredClientes.length)
+      this.pagination.update(this.serverTotal)
       container.innerHTML = this.pagination.render()
     }
   }

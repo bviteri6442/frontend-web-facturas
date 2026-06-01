@@ -1,5 +1,6 @@
 // Servicio de Usuarios
 import { httpClient } from './http-client.js'
+import { unwrapPaged } from '../utils/apiResponse.js'
 
 const ENDPOINT_USUARIOS = '/usuarios'
 
@@ -20,11 +21,12 @@ const normalizeUsuario = (u) => ({
 })
 
 export const usuarioService = {
-  async getAll() {
+  async getAll(params = {}) {
     try {
-      const response = await httpClient.get(ENDPOINT_USUARIOS)
-      const usuarios = response?.data || response || []
-      return Array.isArray(usuarios) ? usuarios.map(normalizeUsuario) : []
+      const query = new URLSearchParams({ page: String(params.page ?? 1), limit: String(params.limit ?? 200) })
+      const response = await httpClient.get(`${ENDPOINT_USUARIOS}?${query}`)
+      const { data } = unwrapPaged(response, 'usuarios')
+      return data.map(normalizeUsuario)
     } catch (error) {
       console.error('[usuarioService] Error en getAll:', error)
       return []

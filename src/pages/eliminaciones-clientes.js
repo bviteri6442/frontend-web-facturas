@@ -1,4 +1,4 @@
-import { httpClient } from '../services/http-client.js'
+import { clienteService } from '../services/clienteService.js'
 import { PaginationAdvanced } from '../components/PaginationAdvanced.js'
 
 export class EliminacionesClientes {
@@ -7,6 +7,9 @@ export class EliminacionesClientes {
     this.filtrados = []
     this.currentPage = 1
     this.itemsPerPage = 10
+    this.serverTotal = 0
+    this.searchTerm = ''
+    this.searchDebounce = null
     this.pagination = null
   }
 
@@ -62,7 +65,10 @@ export class EliminacionesClientes {
   async init() {
     await this.loadDeactivatedClients()
     document.getElementById('searchDeletedClientes')?.addEventListener('input', (e) => {
-      this.filterClientes(e.target.value)
+      this.searchTerm = e.target.value
+      this.currentPage = 1
+      clearTimeout(this.searchDebounce)
+      this.searchDebounce = setTimeout(() => this.loadDeactivatedClients(), 400)
     })
     document.getElementById('deletedClientsTable')?.addEventListener('click', async (e) => {
       const btn = e.target.closest('button')
@@ -78,21 +84,21 @@ export class EliminacionesClientes {
 
   async loadDeactivatedClients() {
     try {
-      const data = await httpClient.get('/clientes')
+      const { data, total } = await clienteService.getPage({
+        page: this.currentPage,
+        limit: this.itemsPerPage,
+        search: this.searchTerm,
+        activo: false
+      })
       this.clientes = data
-        .filter(c => c.activo === false)
-        .sort((a, b) => {
-          const dateA = a.fechaEliminacion ? new Date(a.fechaEliminacion) : new Date(0)
-          const dateB = b.fechaEliminacion ? new Date(b.fechaEliminacion) : new Date(0)
-          return dateB - dateA
-        })
-      this.filtrados = [...this.clientes]
-      this.setupPagination()
+      this.filtrados = data
+      this.serverTotal = total
+      if (!this.pagination) this.setupPagination()
       this.renderStats()
       this.renderTable(this.filtrados)
     } catch (err) {
       document.getElementById('deletedClientsTable').innerHTML =
-        `<tr><td colspan="9" style="padding:2rem;text-align:center;color:#EF4444;">Error al cargar clientes: ${err.message}</td></tr>`
+        `<tr><td colspan="8" style="padding:2rem;text-align:center;color:#EF4444;">Error al cargar clientes: ${err.message}</td></tr>`
     }
   }
 
@@ -101,12 +107,8 @@ export class EliminacionesClientes {
     btn.disabled = true
     btn.textContent = '...'
     try {
-      await httpClient.put(`/clientes/${id}`, { id: parseInt(id), activo: true })
-      this.clientes = this.clientes.filter(c => String(c.id) !== String(id))
-      this.filtrados = this.filtrados.filter(c => String(c.id) !== String(id))
-      if (this.pagination) this.pagination.update(this.filtrados.length)
-      this.renderStats()
-      this.renderTable(this.filtrados)
+      await clienteService.update(id, { id: parseInt(id), activo: true })
+      await this.loadDeactivatedClients()
     } catch (err) {
       btn.disabled = false
       btn.textContent = 'Activar'
@@ -119,12 +121,8 @@ export class EliminacionesClientes {
     btn.disabled = true
     btn.textContent = '...'
     try {
-      await httpClient.delete(`/clientes/${id}`)
-      this.clientes = this.clientes.filter(c => String(c.id) !== String(id))
-      this.filtrados = this.filtrados.filter(c => String(c.id) !== String(id))
-      if (this.pagination) this.pagination.update(this.filtrados.length)
-      this.renderStats()
-      this.renderTable(this.filtrados)
+      await clienteService.delete(id)
+      await this.loadDeactivatedClients()
     } catch (err) {
       btn.disabled = false
       btn.textContent = 'Eliminar'
@@ -135,12 +133,12 @@ export class EliminacionesClientes {
   setupPagination() {
     this.pagination = new PaginationAdvanced({
       currentPage: this.currentPage,
-      totalPages: Math.ceil(this.filtrados.length / this.itemsPerPage),
-      totalItems: this.filtrados.length,
+      totalPages: Math.ceil(this.serverTotal / this.itemsPerPage) || 1,
+      totalItems: this.serverTotal,
       itemsPerPage: this.itemsPerPage,
       onChange: (page) => {
         this.currentPage = page
-        this.renderTable(this.filtrados)
+        this.loadDeactivatedClients()
       }
     })
     window.pagination = this.pagination
@@ -154,12 +152,11 @@ export class EliminacionesClientes {
   }
 
   getPaginated(data) {
-    const start = (this.currentPage - 1) * this.itemsPerPage
-    return data.slice(start, start + this.itemsPerPage)
+    return data
   }
 
   renderStats() {
-    const total = this.clientes.length
+    const total = this.serverTotal
     const container = document.getElementById('statsClientes')
     if (!container) return
     container.innerHTML = `
@@ -178,7 +175,7 @@ export class EliminacionesClientes {
         </div>
         <div>
           <div style="font-size: 1.75rem; font-weight: 700; color: #0F172A;">${this.filtrados.length}</div>
-          <div style="font-size: 0.8rem; color: #64748B;">Mostrando (con filtro)</div>
+          <div style="font-size: 0.8rem; color: #64748B;">En esta página</div>
         </div>
       </div>
     `
@@ -186,13 +183,13 @@ export class EliminacionesClientes {
 
   renderTable(data) {
     if (this.pagination) {
-      this.pagination.update(data.length)
+      this.pagination.update(this.serverTotal)
     }
     const page = this.getPaginated(data)
     const tbody = document.getElementById('deletedClientsTable')
     if (!tbody) return
     if (page.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" style="padding:2rem;text-align:center;color:#64748B;">No hay clientes desactivados</td></tr>`
+      tbody.innerHTML = `<tr><td colspan="8" style="padding:2rem;text-align:center;color:#64748B;">No hay clientes desactivados</td></tr>`
       this.renderPagination()
       return
     }
@@ -218,24 +215,5 @@ export class EliminacionesClientes {
       </tr>
     `).join('')
     this.renderPagination()
-  }
-
-  filterClientes(term) {
-    const t = term.toLowerCase()
-    if (!t) {
-      this.filtrados = [...this.clientes]
-    } else {
-      this.filtrados = this.clientes.filter(c =>
-        (c.nombre || '').toLowerCase().includes(t) ||
-        (c.apellido || '').toLowerCase().includes(t) ||
-        ([c.nombre, c.apellido].filter(Boolean).join(' ')).toLowerCase().includes(t) ||
-        (c.cedula || '').toLowerCase().includes(t) ||
-        (c.documento || '').toLowerCase().includes(t) ||
-        (c.email || '').toLowerCase().includes(t)
-      )
-    }
-    this.currentPage = 1
-    if (this.pagination) this.pagination.currentPage = 1
-    this.renderTable(this.filtrados)
   }
 }

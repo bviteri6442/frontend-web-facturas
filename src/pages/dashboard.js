@@ -115,26 +115,21 @@ export class Dashboard {
       console.log('[DASHBOARD] Cargando estadísticas desde backend...')
       
       // Cargar datos en paralelo
-      const [clientes, productosResult, ventas] = await Promise.all([
-        clienteService.getAll(),
-        productoService.getAll(),
-        ventaService.getAll()
+      const now = new Date()
+      const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      const finMes = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString()
+
+      const [clientesPage, productosPage, totalVentasMes, stockBajo] = await Promise.all([
+        clienteService.getPage({ page: 1, limit: 1, activo: true }),
+        productoService.getPage({ page: 1, limit: 1 }),
+        ventaService.sumVentasEnRango(inicioMes, finMes),
+        productoService.countStockBajo()
       ])
 
-      const productosLista = productosResult?.productos ?? (Array.isArray(productosResult) ? productosResult : [])
-
-      // Calcular estadísticas
-      const totalVentas = Array.isArray(ventas)
-        ? ventas.reduce((sum, v) => sum + (v.totalVenta || v.montoTotal || v.monto || 0), 0)
-        : 0
-      const stockBajo = productosLista.filter(
-        (p) => (p.stockActual || p.stock || 0) <= (p.stockMinimo || 10)
-      ).length
-
       this.stats = {
-        totalClientes: Array.isArray(clientes) ? clientes.length : 0,
-        totalProductos: productosLista.length,
-        totalVentas: totalVentas,
+        totalClientes: clientesPage.total,
+        totalProductos: productosPage.total,
+        totalVentas: totalVentasMes,
         productosStockBajo: stockBajo
       }
 
@@ -168,7 +163,14 @@ export class Dashboard {
   async initializeSalesChart() {
     try {
       // Obtener ventas del período
-      const ventas = await ventaService.getAll()
+      const rangeStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const rangeEnd = new Date().toISOString()
+      const ventas = await ventaService.getAll({
+        fetchAll: true,
+        fechaInicio: rangeStart,
+        fechaFin: rangeEnd,
+        maxPages: 50
+      })
       console.log('[DASHBOARD] Ventas para gráfico:', ventas.length)
       
       // Setear fechas por defecto (últimos 30 días)
@@ -215,7 +217,12 @@ export class Dashboard {
         }
       }
       
-      const ventas = await ventaService.getAll()
+      const ventas = await ventaService.getAll({
+        fetchAll: true,
+        fechaInicio: this.dateRangeStart.toISOString(),
+        fechaFin: this.dateRangeEnd.toISOString(),
+        maxPages: 50
+      })
       this.renderSalesChart(ventas)
     } catch (error) {
       console.error('[DASHBOARD] Error actualizando gráfico:', error)

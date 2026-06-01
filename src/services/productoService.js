@@ -1,17 +1,16 @@
 // Servicio de Productos
 import { httpClient } from './http-client.js'
-import { assertApiData } from '../utils/apiResponse.js'
+import { unwrapPaged } from '../utils/apiResponse.js'
 
 const ENDPOINT_PRODUCTOS = '/productos'
 
-// Función auxiliar para normalizar datos del backend
 const normalizeProducto = (p) => ({
   id: p.id || p.Id,
   nombre: p.nombre || p.Nombre,
   codigoBarra: p.codigo || p.codigoBarra || p.CodigoBarra || p.Codigo,
   descripcion: p.descripcion || p.Descripcion || '',
   precioCosto: p.precioCompra || p.PrecioCompra || 0,
-  precio: p.precio || p.precioVenta || p.Precio || 0,  // ← AGREGUÉ TAMBIÉN COMO "precio"
+  precio: p.precio || p.precioVenta || p.Precio || 0,
   precioVenta: p.precio || p.precioVenta || p.Precio || 0,
   stockActual: p.stock || p.Stock || 0,
   stockMinimo: p.stockMinimo || p.StockMinimo || 0,
@@ -23,39 +22,37 @@ const normalizeProducto = (p) => ({
 })
 
 export const productoService = {
-  // Soporta paginación: { page, limit, search }
-  async getAll(params = {}) {
+  async getPage({ page = 1, limit = 30, search = '' } = {}) {
     try {
-      const query = new URLSearchParams()
-      if (params.page) query.append('page', params.page)
-      if (params.limit) query.append('limit', params.limit)
-      if (params.search) query.append('search', params.search)
-      const url = query.toString() ? `${ENDPOINT_PRODUCTOS}?${query}` : ENDPOINT_PRODUCTOS
-      const response = await httpClient.get(url)
-      assertApiData(response, 'productos')
-      const body = response?.data || response
-      // El backend devuelve { total, page, limit, productos: [...] }
-      if (body && Array.isArray(body.productos)) {
-        return {
-          total: body.total,
-          page: body.page,
-          limit: body.limit,
-          productos: body.productos.map(normalizeProducto)
-        }
+      const query = new URLSearchParams({ page: String(page), limit: String(limit) })
+      if (search?.trim()) query.append('search', search.trim())
+      const response = await httpClient.get(`${ENDPOINT_PRODUCTOS}?${query}`)
+      const paged = unwrapPaged(response, 'productos')
+      return {
+        total: paged.total,
+        page: paged.page,
+        limit: paged.limit,
+        productos: paged.data.map(normalizeProducto)
       }
-      // Fallback: respuesta plana (compatibilidad)
-      const productos = Array.isArray(body) ? body : []
-      return { total: productos.length, page: 1, limit: productos.length, productos: productos.map(normalizeProducto) }
     } catch (error) {
-      console.error('[productoService] Error en getAll:', error)
+      console.error('[productoService] Error en getPage:', error)
       throw error
     }
+  },
+
+  async getAll(params = {}) {
+    return this.getPage({
+      page: params.page ?? 1,
+      limit: params.limit ?? 30,
+      search: params.search
+    })
   },
 
   async getById(id) {
     try {
       const response = await httpClient.get(`${ENDPOINT_PRODUCTOS}/${id}`)
-      return response?.data ? normalizeProducto(response.data) : response?.data || null
+      const raw = response?.data || response
+      return raw ? normalizeProducto(raw) : null
     } catch (error) {
       console.error('[productoService] Error en getById:', error)
       return null
@@ -76,7 +73,6 @@ export const productoService = {
     const response = await httpClient.post(ENDPOINT_PRODUCTOS, payload)
     const data = response?.data || response || null
     if (!data) return null
-    // Backend returns { message: "Producto creado con ID: 123" } — extract the ID
     const msg = data.message || data.Message || ''
     const match = msg.match(/\d+/)
     if (match) return parseInt(match[0])
@@ -126,12 +122,29 @@ export const productoService = {
 
   async search(term, limit = 20) {
     try {
-      // El backend filtra por nombre desde el endpoint principal con el param ?search=
-      const result = await productoService.getAll({ search: term, limit })
+      const result = await this.getPage({ search: term, limit, page: 1 })
       return result.productos || []
     } catch (error) {
       console.error('[productoService] Error en search:', error)
       return []
     }
+  },
+
+  /** Cuenta productos con stock bajo (varias páginas, máx. 20 páginas × 200). */
+  async countStockBajo() {
+    let count = 0
+    let page = 1
+    const limit = 200
+    const maxPages = 20
+
+    while (page <= maxPages) {
+      const { productos, total } = await this.getPage({ page, limit })
+      count += productos.filter(
+        (p) => (p.stockActual || 0) <= (p.stockMinimo || 10)
+      ).length
+      if (page * limit >= total || productos.length === 0) break
+      page++
+    }
+    return count
   }
 }

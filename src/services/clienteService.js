@@ -1,18 +1,39 @@
 // Servicio de Clientes
 import { httpClient } from './http-client.js'
-import { unwrapList } from '../utils/apiResponse.js'
+import { unwrapPaged, fetchAllPaged } from '../utils/apiResponse.js'
 
 const ENDPOINT_CLIENTES = '/clientes'
 
 export const clienteService = {
-  async getAll() {
+  async getPage({ page = 1, limit = 30, search = '', activo = undefined } = {}) {
     try {
-      const response = await httpClient.get(ENDPOINT_CLIENTES)
-      return unwrapList(response)
+      const query = new URLSearchParams({ page: String(page), limit: String(limit) })
+      if (search?.trim()) query.append('search', search.trim())
+      if (activo !== undefined && activo !== null) query.append('activo', String(activo))
+      const response = await httpClient.get(`${ENDPOINT_CLIENTES}?${query}`)
+      return unwrapPaged(response, 'clientes')
     } catch (error) {
-      console.error('[clienteService] Error en getAll:', error)
+      console.error('[clienteService] Error en getPage:', error)
       throw error
     }
+  },
+
+  /** Primera página (compatibilidad). Para listas grandes usar getPage. */
+  async getAll(params = {}) {
+    if (params.fetchAll) {
+      const { data } = await fetchAllPaged(
+        (p) => this.getPage({ ...p, search: params.search, activo: params.activo }),
+        { limit: params.limit ?? 200, maxPages: params.maxPages ?? 500 }
+      )
+      return data
+    }
+    const { data } = await this.getPage({
+      page: params.page ?? 1,
+      limit: params.limit ?? 200,
+      search: params.search,
+      activo: params.activo
+    })
+    return data
   },
 
   async getById(id) {
@@ -52,8 +73,8 @@ export const clienteService = {
 
   async search(term, limit = 20) {
     try {
-      const response = await httpClient.get(`${ENDPOINT_CLIENTES}/search?term=${encodeURIComponent(term)}&limit=${limit}`)
-      return response?.data || response || []
+      const { data } = await this.getPage({ search: term, limit, page: 1 })
+      return data
     } catch (error) {
       console.error('[clienteService] Error en search:', error)
       return []

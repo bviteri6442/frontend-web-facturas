@@ -14,6 +14,8 @@ export class Productos {
     this.searchTerm = ''
     this.currentPage = 1
     this.itemsPerPage = ITEMS_PER_PAGE
+    this.serverTotal = 0
+    this.searchDebounce = null
     this.pagination = null
     this.loading = false
   }
@@ -96,8 +98,8 @@ export class Productos {
       searchBox.addEventListener('input', (e) => {
         this.searchTerm = e.target.value
         this.currentPage = 1
-        this.filterProductos()
-        this.updateTableAndPagination()
+        clearTimeout(this.searchDebounce)
+        this.searchDebounce = setTimeout(() => this.loadProductos(), 400)
       })
     }
 
@@ -133,18 +135,17 @@ export class Productos {
   async loadProductos() {
     this.loading = true
     try {
-      console.log('[PRODUCTOS] Cargando desde backend...')
-      const result = await productoService.getAll({ limit: 10000 })
-      const rawProductos = result.productos || (Array.isArray(result) ? result : [])
-      this.productos = rawProductos.sort((a, b) => {
-        if (a.fechaCreacion && b.fechaCreacion) {
-          return new Date(b.fechaCreacion) - new Date(a.fechaCreacion)
-        }
-        return (b.id || 0) - (a.id || 0)
+      console.log('[PRODUCTOS] Cargando página', this.currentPage, 'desde backend...')
+      const result = await productoService.getPage({
+        page: this.currentPage,
+        limit: this.itemsPerPage,
+        search: this.searchTerm
       })
-      console.log('[PRODUCTOS] Cargados:', this.productos.length)
-      this.filterProductos()
-      this.setupPagination()
+      this.productos = result.productos
+      this.filteredProductos = result.productos
+      this.serverTotal = result.total
+      console.log('[PRODUCTOS] Página:', this.productos.length, 'de', this.serverTotal)
+      if (!this.pagination) this.setupPagination()
       this.updateTableAndPagination()
     } catch (error) {
       console.error('[PRODUCTOS] Error cargando:', error)
@@ -162,33 +163,19 @@ export class Productos {
     }
   }
 
-  filterProductos() {
-    if (!this.searchTerm.trim()) {
-      this.filteredProductos = [...this.productos]
-    } else {
-      const term = this.searchTerm.toLowerCase()
-      this.filteredProductos = this.productos.filter(p =>
-        p.nombre?.toLowerCase().includes(term) ||
-        p.descripcion?.toLowerCase().includes(term)
-      )
-    }
-  }
-
   getPaginatedProductos() {
-    const start = (this.currentPage - 1) * this.itemsPerPage
-    const end = start + this.itemsPerPage
-    return this.filteredProductos.slice(start, end)
+    return this.filteredProductos
   }
 
   setupPagination() {
     this.pagination = new PaginationAdvanced({
-      currentPage: 1,
-      totalPages: Math.ceil(this.filteredProductos.length / this.itemsPerPage) || 1,
-      totalItems: this.filteredProductos.length,
+      currentPage: this.currentPage,
+      totalPages: Math.ceil(this.serverTotal / this.itemsPerPage) || 1,
+      totalItems: this.serverTotal,
       itemsPerPage: this.itemsPerPage,
       onChange: (page) => {
         this.currentPage = page
-        this.updateTableAndPagination()
+        this.loadProductos()
       }
     })
     
@@ -198,7 +185,7 @@ export class Productos {
   renderPagination() {
     const container = document.getElementById('pagination-container')
     if (container && this.pagination) {
-      this.pagination.update(this.filteredProductos.length)
+      this.pagination.update(this.serverTotal)
       container.innerHTML = this.pagination.render()
     }
   }

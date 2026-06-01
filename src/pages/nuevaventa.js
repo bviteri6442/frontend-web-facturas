@@ -18,6 +18,8 @@ export class NuevaVenta {
     
     // Paginación
     this.clientesPaginaActual = 1
+    this.clientesTotalServidor = 0
+    this.clientesSearchTerm = ''
     this.productosPaginaActual = 1
     this.itemsPorPagina = 10
     this.searchingProductos = false
@@ -150,20 +152,32 @@ export class NuevaVenta {
     `
   }
 
-  async loadClientes() {
+  async loadClientes(search) {
+    const term = search !== undefined ? search : this.clientesSearchTerm
     try {
-      this.clientes = await clienteService.getAll()
-      console.log('[NuevaVenta] Clientes cargados:', this.clientes.length)
+      const { data, total } = await clienteService.getPage({
+        page: this.clientesPaginaActual,
+        limit: this.itemsPorPagina,
+        search: term,
+        activo: true
+      })
+      this.clientes = data
+      this.clientesTotalServidor = total
+      console.log('[NuevaVenta] Clientes cargados:', this.clientes.length, 'de', total)
     } catch (error) {
       console.error('[NuevaVenta] Error cargando clientes:', error)
       this.clientes = []
     }
   }
 
-  async loadProductos() {
+  async loadProductos(search = '') {
     try {
-      const result = await productoService.getAll({ limit: 10000 })
-      const todos = result.productos || (Array.isArray(result) ? result : [])
+      const result = await productoService.getPage({
+        page: 1,
+        limit: 200,
+        search
+      })
+      const todos = result.productos || []
       this.productos = todos.filter(p => (p.stockActual || 0) > 0)
       console.log('[NuevaVenta] Productos cargados (con stock):', this.productos.length)
     } catch (error) {
@@ -176,15 +190,10 @@ export class NuevaVenta {
     const container = document.getElementById('clientesListContainer')
     if (!container) return
 
-    // Usar filtered o todos los clientes
-    const clientesAFiltrar = this.filteredClientes.length > 0 ? this.filteredClientes : this.clientes
-    const totalClientes = clientesAFiltrar.length
-    const totalPaginas = Math.ceil(totalClientes / this.itemsPorPagina)
-    const inicio = (this.clientesPaginaActual - 1) * this.itemsPorPagina
-    const fin = inicio + this.itemsPorPagina
-    const clientesAMostrar = clientesAFiltrar.slice(inicio, fin)
+    const clientesAMostrar = this.clientes
+    const totalPaginas = Math.ceil(this.clientesTotalServidor / this.itemsPorPagina) || 1
     
-    if (totalClientes === 0) {
+    if (clientesAMostrar.length === 0) {
       container.innerHTML = '<div style="text-align: center; color: #64748B; padding: 20px;">No hay clientes</div>'
       return
     }
@@ -211,15 +220,17 @@ export class NuevaVenta {
     const btnNext = document.getElementById('btnNextClientes')
 
     if (btnPrev && !btnPrev.disabled) {
-      btnPrev.addEventListener('click', () => {
+      btnPrev.addEventListener('click', async () => {
         this.clientesPaginaActual--
+        await this.loadClientes(this.clientesSearchTerm)
         this.renderClientesSimpleList()
       })
     }
 
     if (btnNext && !btnNext.disabled) {
-      btnNext.addEventListener('click', () => {
+      btnNext.addEventListener('click', async () => {
         this.clientesPaginaActual++
+        await this.loadClientes(this.clientesSearchTerm)
         this.renderClientesSimpleList()
       })
     }
@@ -239,21 +250,10 @@ export class NuevaVenta {
     })
   }
 
-  filterClientes(busqueda) {
-    const termino = busqueda.toLowerCase().trim()
-    if (termino === '') {
-      this.filteredClientes = []
-      this.clientesPaginaActual = 1
-      return
-    }
-
-    this.filteredClientes = this.clientes.filter(c => 
-      (c.nombre && c.nombre.toLowerCase().includes(termino)) ||
-      (c.apellido && c.apellido.toLowerCase().includes(termino)) ||
-      (c.documento && c.documento.toLowerCase().includes(termino)) ||
-      (c.cedula && c.cedula.toLowerCase().includes(termino))
-    )
+  async filterClientes(busqueda) {
+    this.clientesSearchTerm = busqueda.trim()
     this.clientesPaginaActual = 1
+    await this.loadClientes(this.clientesSearchTerm)
   }
 
   async openClientesModal() {
@@ -266,20 +266,25 @@ export class NuevaVenta {
     `
 
     this.clientesPaginaActual = 1
-    this.filteredClientes = []
+    this.clientesSearchTerm = ''
 
     await Swal.fire({
       title: 'Seleccionar Cliente',
       html: modalHTML,
       width: '500px',
       didOpen: async (modal) => {
+        await this.loadClientes()
         this.renderClientesSimpleList()
         
         const searchInput = document.getElementById('searchClientesModal')
         if (searchInput) {
+          let debounce
           searchInput.addEventListener('input', (e) => {
-            this.filterClientes(e.target.value)
-            this.renderClientesSimpleList()
+            clearTimeout(debounce)
+            debounce = setTimeout(async () => {
+              await this.filterClientes(e.target.value)
+              this.renderClientesSimpleList()
+            }, 400)
           })
 
           // Evento de Enter para crear cliente si no existe

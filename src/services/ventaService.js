@@ -1,26 +1,72 @@
 // Servicio de Ventas
 import { httpClient } from './http-client.js'
 import { API_ENDPOINTS } from '../config/api.js'
-import { unwrapList } from '../utils/apiResponse.js'
+import { unwrapPaged, fetchAllPaged } from '../utils/apiResponse.js'
 
 const ENDPOINT_VENTAS = API_ENDPOINTS.VENTAS
 
 export const ventaService = {
+  async getPage(filters = {}) {
+    try {
+      const query = new URLSearchParams()
+      if (filters.page) query.append('page', String(filters.page))
+      if (filters.limit) query.append('limit', String(filters.limit))
+      if (filters.fechaInicio) query.append('fechaInicio', filters.fechaInicio)
+      if (filters.fechaFin) query.append('fechaFin', filters.fechaFin)
+      if (filters.usuarioId) query.append('usuarioId', String(filters.usuarioId))
+      if (filters.clienteId) query.append('clienteId', String(filters.clienteId))
+      if (filters.estado) query.append('estado', filters.estado)
+      if (filters.search) query.append('search', filters.search)
+      const qs = query.toString()
+      const endpoint = `${ENDPOINT_VENTAS}${qs ? '?' + qs : ''}`
+      const response = await httpClient.get(endpoint)
+      return unwrapPaged(response, 'ventas')
+    } catch (error) {
+      console.error('[ventaService] Error en getPage:', error)
+      throw error
+    }
+  },
+
   async getAll(filters = {}) {
     try {
-      const params = new URLSearchParams(filters).toString()
-      const endpoint = `${ENDPOINT_VENTAS}${params ? '?' + params : ''}`
-      const response = await httpClient.get(endpoint)
-      return unwrapList(response)
+      if (filters.fetchAll) {
+        const { data } = await fetchAllPaged(
+          (p) => this.getPage({ ...filters, ...p, limit: filters.limit ?? 200 }),
+          { limit: filters.limit ?? 200, maxPages: filters.maxPages ?? 100 }
+        )
+        return data
+      }
+      const { data } = await this.getPage({ ...filters, page: filters.page ?? 1, limit: filters.limit ?? 200 })
+      return data
     } catch (error) {
       console.error('[ventaService] Error en getAll:', error)
       throw error
     }
   },
 
+  async sumVentasEnRango(fechaInicio, fechaFin) {
+    let sum = 0
+    let page = 1
+    const limit = 200
+    const maxPages = 50
+
+    while (page <= maxPages) {
+      const { data, total } = await this.getPage({
+        page,
+        limit,
+        fechaInicio,
+        fechaFin,
+        estado: undefined
+      })
+      sum += data.reduce((acc, v) => acc + (v.totalVenta || v.montoTotal || v.monto || 0), 0)
+      if (page * limit >= total || data.length === 0) break
+      page++
+    }
+    return sum
+  },
+
   async getById(id) {
     try {
-      // Intentar primero con ID numérico
       const response = await httpClient.get(`${ENDPOINT_VENTAS}/${id}`)
       return response?.data || response || null
     } catch (error) {
@@ -52,7 +98,6 @@ export const ventaService = {
   async create(ventaData) {
     try {
       const response = await httpClient.post(ENDPOINT_VENTAS, ventaData)
-      // Manejar respuestas incluidas valores falsy válidos como 0
       return response?.data !== undefined ? response.data : response
     } catch (error) {
       console.error('[ventaService] Error en create:', error)
@@ -95,7 +140,8 @@ export const ventaService = {
       const params = new URLSearchParams(filters).toString()
       const endpoint = `${ENDPOINT_VENTAS}/eliminadas/lista${params ? '?' + params : ''}`
       const response = await httpClient.get(endpoint)
-      return response?.data || response || []
+      const paged = unwrapPaged(response, 'ventas eliminadas')
+      return paged.data
     } catch (error) {
       console.error('[ventaService] Error en getEliminadas:', error)
       return []
@@ -132,17 +178,12 @@ export const ventaService = {
     }
   },
 
-
   async downloadPDFById(ventaId, nombreArchivo = 'Factura') {
     try {
-      console.log('[ventaService] Descargando PDF por ID:', ventaId)
-      
       const blob = await httpClient.getBlob(API_ENDPOINTS.VENTAS_PDF(ventaId))
       if (!blob || blob.size === 0) {
         throw new Error('PDF vacío')
       }
-
-      // Descargar
       const urlBlob = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = urlBlob
@@ -151,8 +192,6 @@ export const ventaService = {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(urlBlob)
-      
-      console.log('[ventaService] PDF descargado exitosamente')
       return true
     } catch (error) {
       console.error('[ventaService] Error en downloadPDFById:', error)
@@ -166,8 +205,6 @@ export const ventaService = {
       if (!pdf) {
         throw new Error('No se pudo generar el PDF')
       }
-
-      // Crear blob y descargar
       const blob = new Blob([pdf], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
