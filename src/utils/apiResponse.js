@@ -1,30 +1,54 @@
 /**
  * Normaliza respuestas del backend para listas y objetos paginados.
+ * Formato API: { total, page, limit, data: [...] }
  */
 
 export function assertApiData(response, resourceLabel = 'datos') {
   if (response === null || response === undefined) {
     throw new Error(
       `No se pudieron cargar ${resourceLabel}. Revisa la consola (F12), ` +
-      'VITE_API_BASE_URL en .env.local y que el backend esté activo.'
+      'VITE_API_BASE_URL y que el backend esté activo.'
     )
   }
 }
 
-/** Respuesta paginada estándar: { total, page, limit, data } */
+/** Detecta el sobre paginado estándar del backend .NET */
+export function isPagedEnvelope(obj) {
+  return (
+    obj != null &&
+    typeof obj === 'object' &&
+    !Array.isArray(obj) &&
+    Array.isArray(obj.data) &&
+    (typeof obj.total === 'number' || typeof obj.total === 'string')
+  )
+}
+
+/** Respuesta paginada: devuelve { total, page, limit, data } */
 export function unwrapPaged(response, resourceLabel = 'datos') {
   assertApiData(response, resourceLabel)
-  const body = response?.data ?? response
 
-  if (body && typeof body === 'object' && Array.isArray(body.data)) {
+  // Caso normal: httpClient devuelve { total, page, limit, data }
+  if (isPagedEnvelope(response)) {
     return {
-      total: Number(body.total ?? body.data.length),
-      page: Number(body.page ?? 1),
-      limit: Number(body.limit ?? body.data.length),
-      data: body.data
+      total: Number(response.total),
+      page: Number(response.page ?? 1),
+      limit: Number(response.limit ?? response.data.length),
+      data: response.data
     }
   }
 
+  // Doble envoltorio raro: { data: { total, page, limit, data } }
+  if (isPagedEnvelope(response?.data)) {
+    const env = response.data
+    return {
+      total: Number(env.total),
+      page: Number(env.page ?? 1),
+      limit: Number(env.limit ?? env.data.length),
+      data: env.data
+    }
+  }
+
+  // Lista plana (legacy)
   const list = unwrapList(response)
   return {
     total: list.length,
@@ -35,9 +59,16 @@ export function unwrapPaged(response, resourceLabel = 'datos') {
 }
 
 export function unwrapList(response, nestedKeys = []) {
-  assertApiData(response)
+  if (response === null || response === undefined) return []
+
+  if (isPagedEnvelope(response)) return response.data
+
   if (Array.isArray(response)) return response
+
+  if (isPagedEnvelope(response?.data)) return response.data.data
+
   if (response?.data && Array.isArray(response.data)) return response.data
+
   for (const key of nestedKeys) {
     if (response?.[key] && Array.isArray(response[key])) return response[key]
   }

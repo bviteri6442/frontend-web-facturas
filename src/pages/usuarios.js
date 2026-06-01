@@ -5,6 +5,7 @@ import { PaginationAdvanced } from '../components/PaginationAdvanced.js'
 import { GlobalModal } from '../components/GlobalModal.js'
 import Swal from 'sweetalert2'
 import { uploadToCloudinary } from '../services/cloudinaryService.js'
+import { padTableBodyHtml } from '../utils/tableUi.js'
 
 const ITEMS_PER_PAGE = 10
 
@@ -15,6 +16,8 @@ export class Usuarios {
     this.searchTerm = ''
     this.currentPage = 1
     this.itemsPerPage = ITEMS_PER_PAGE
+    this.serverTotal = 0
+    this.searchDebounce = null
     this.pagination = null
     this.loading = false
     this.roles = []
@@ -75,7 +78,7 @@ export class Usuarios {
         <p>Cargando usuarios...</p>
       </div>
     ` : `
-      <div class="table-container" style="overflow-x: auto;">
+      <div class="table-container table-panel-fixed" style="overflow-x: auto;">
         <table class="table" style="width: 100%; border-collapse: collapse;">
           <thead style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0;">
             <tr>
@@ -125,8 +128,8 @@ export class Usuarios {
       searchBox.addEventListener('input', (e) => {
         this.searchTerm = e.target.value
         this.currentPage = 1
-        this.filterUsuarios()
-        this.updateTableAndPagination()
+        clearTimeout(this.searchDebounce)
+        this.searchDebounce = setTimeout(() => this.loadUsuarios(), 400)
       })
     }
 
@@ -173,12 +176,17 @@ export class Usuarios {
   async loadUsuarios() {
     this.loading = true
     try {
-      console.log('[USUARIOS] Cargando desde backend...')
-      const usuarios = await usuarioService.getAll()
-      this.usuarios = Array.isArray(usuarios) ? usuarios : []
-      console.log('[USUARIOS] Cargados:', this.usuarios.length)
-      this.filterUsuarios()
-      this.setupPagination()
+      console.log('[USUARIOS] Cargando página', this.currentPage)
+      const { data, total } = await usuarioService.getPage({
+        page: this.currentPage,
+        limit: this.itemsPerPage,
+        search: this.searchTerm
+      })
+      this.usuarios = data
+      this.filteredUsuarios = data
+      this.serverTotal = total
+      console.log('[USUARIOS] Página:', data.length, 'de', total)
+      if (!this.pagination) this.setupPagination()
       this.updateTableAndPagination()
     } catch (error) {
       console.error('[USUARIOS] Error cargando:', error)
@@ -188,34 +196,19 @@ export class Usuarios {
     }
   }
 
-  filterUsuarios() {
-    if (!this.searchTerm.trim()) {
-      this.filteredUsuarios = [...this.usuarios]
-    } else {
-      const term = this.searchTerm.toLowerCase()
-      this.filteredUsuarios = this.usuarios.filter(u =>
-        u.nombreUsuario?.toLowerCase().includes(term) ||
-        u.nombre?.toLowerCase().includes(term) ||
-        u.correo?.toLowerCase().includes(term)
-      )
-    }
-  }
-
   getPaginatedUsuarios() {
-    const start = (this.currentPage - 1) * this.itemsPerPage
-    const end = start + this.itemsPerPage
-    return this.filteredUsuarios.slice(start, end)
+    return this.filteredUsuarios
   }
 
   setupPagination() {
     this.pagination = new PaginationAdvanced({
-      currentPage: 1,
-      totalPages: Math.ceil(this.filteredUsuarios.length / this.itemsPerPage) || 1,
-      totalItems: this.filteredUsuarios.length,
+      currentPage: this.currentPage,
+      totalPages: Math.ceil(this.serverTotal / this.itemsPerPage) || 1,
+      totalItems: this.serverTotal,
       itemsPerPage: this.itemsPerPage,
       onChange: (page) => {
         this.currentPage = page
-        this.updateTableAndPagination()
+        this.loadUsuarios()
       }
     })
     
@@ -225,7 +218,7 @@ export class Usuarios {
   renderPagination() {
     const container = document.getElementById('pagination-container')
     if (container && this.pagination) {
-      this.pagination.update(this.filteredUsuarios.length)
+      this.pagination.update(this.serverTotal)
       container.innerHTML = this.pagination.render()
     }
   }

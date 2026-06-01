@@ -1,24 +1,33 @@
 // Servicio de Logs y Auditoría
 import { httpClient } from './http-client.js'
+import { unwrapPaged } from '../utils/apiResponse.js'
 
 const ENDPOINT_INTENTOS = '/logs/intentos-login'
 const ENDPOINT_ERRORES  = '/logs/errores'
 
 export const logService = {
-  // ── Intentos de Login ─────────────────────────────────────────────────────
-
-  async getAll(filtros = {}) {
+  async getPage(filtros = {}) {
     try {
       const params = new URLSearchParams()
+      params.append('page', String(filtros.page ?? 1))
+      params.append('limit', String(filtros.limit ?? 30))
       if (filtros.fechaInicio) params.append('fechaInicio', filtros.fechaInicio)
       if (filtros.fechaFin) params.append('fechaFin', filtros.fechaFin)
       if (filtros.exitoso !== undefined) params.append('exitoso', filtros.exitoso)
       if (filtros.usuario) params.append('usuario', filtros.usuario)
 
-      const query = params.toString()
-      const endpoint = `${ENDPOINT_INTENTOS}${query ? '?' + query : ''}`
-      const response = await httpClient.get(endpoint)
-      return response?.data || response || []
+      const response = await httpClient.get(`${ENDPOINT_INTENTOS}?${params}`)
+      return unwrapPaged(response, 'logs')
+    } catch (error) {
+      console.error('[logService] Error en getPage:', error)
+      throw error
+    }
+  },
+
+  async getAll(filtros = {}) {
+    try {
+      const { data } = await this.getPage({ ...filtros, limit: filtros.limit ?? 200 })
+      return data
     } catch (error) {
       console.error('[logService] Error en getAll:', error)
       return []
@@ -51,9 +60,8 @@ export const logService = {
 
   async search(term, filtros = {}) {
     try {
-      const params = new URLSearchParams({ usuario: term, ...filtros })
-      const response = await httpClient.get(`${ENDPOINT_INTENTOS}?${params}`)
-      return response?.data || response || []
+      const { data } = await this.getPage({ usuario: term, ...filtros, page: 1, limit: 200 })
+      return data
     } catch (error) {
       console.error('[logService] Error en search:', error)
       return []
@@ -63,28 +71,35 @@ export const logService = {
   async getByType(tipo) {
     try {
       const exitoso = tipo === 'EXITOSO' ? true : tipo === 'FALLIDO' ? false : undefined
-      const response = await logService.getAll(exitoso !== undefined ? { exitoso } : {})
-      return response
+      return await this.getAll(exitoso !== undefined ? { exitoso } : {})
     } catch (error) {
       console.error('[logService] Error en getByType:', error)
       return []
     }
   },
 
-  // ── Logs de Errores ───────────────────────────────────────────────────────
-
-  async getErrores(filtros = {}) {
+  async getErroresPage(filtros = {}) {
     try {
       const params = new URLSearchParams()
+      params.append('page', String(filtros.page ?? 1))
+      params.append('limit', String(filtros.limit ?? 30))
       if (filtros.fechaInicio) params.append('fechaInicio', filtros.fechaInicio)
       if (filtros.fechaFin) params.append('fechaFin', filtros.fechaFin)
       if (filtros.nivel) params.append('nivel', filtros.nivel)
       if (filtros.revisado !== undefined) params.append('revisado', filtros.revisado)
 
-      const query = params.toString()
-      const endpoint = `${ENDPOINT_ERRORES}${query ? '?' + query : ''}`
-      const response = await httpClient.get(endpoint)
-      return response?.data || response || []
+      const response = await httpClient.get(`${ENDPOINT_ERRORES}?${params}`)
+      return unwrapPaged(response, 'errores')
+    } catch (error) {
+      console.error('[logService] Error en getErroresPage:', error)
+      throw error
+    }
+  },
+
+  async getErrores(filtros = {}) {
+    try {
+      const { data } = await this.getErroresPage({ ...filtros, limit: filtros.limit ?? 200 })
+      return data
     } catch (error) {
       console.error('[logService] Error en getErrores:', error)
       return []

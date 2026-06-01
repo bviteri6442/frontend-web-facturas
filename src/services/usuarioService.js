@@ -21,12 +21,29 @@ const normalizeUsuario = (u) => ({
 })
 
 export const usuarioService = {
+  async getPage(params = {}) {
+    try {
+      const query = new URLSearchParams({
+        page: String(params.page ?? 1),
+        limit: String(params.limit ?? 30)
+      })
+      if (params.search) query.append('search', params.search)
+      const response = await httpClient.get(`${ENDPOINT_USUARIOS}?${query}`)
+      const paged = unwrapPaged(response, 'usuarios')
+      return {
+        ...paged,
+        data: paged.data.map(normalizeUsuario)
+      }
+    } catch (error) {
+      console.error('[usuarioService] Error en getPage:', error)
+      throw error
+    }
+  },
+
   async getAll(params = {}) {
     try {
-      const query = new URLSearchParams({ page: String(params.page ?? 1), limit: String(params.limit ?? 200) })
-      const response = await httpClient.get(`${ENDPOINT_USUARIOS}?${query}`)
-      const { data } = unwrapPaged(response, 'usuarios')
-      return data.map(normalizeUsuario)
+      const { data } = await this.getPage({ page: 1, limit: params.limit ?? 200, search: params.search })
+      return data
     } catch (error) {
       console.error('[usuarioService] Error en getAll:', error)
       return []

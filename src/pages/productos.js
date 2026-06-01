@@ -4,6 +4,7 @@ import { PaginationAdvanced } from '../components/PaginationAdvanced.js'
 import { GlobalModal } from '../components/GlobalModal.js'
 import Swal from 'sweetalert2'
 import { uploadToCloudinary } from '../services/cloudinaryService.js'
+import { padTableBodyHtml } from '../utils/tableUi.js'
 
 const ITEMS_PER_PAGE = 10
 
@@ -53,7 +54,7 @@ export class Productos {
         <p>Cargando productos...</p>
       </div>
     ` : `
-      <div class="table-container">
+      <div class="table-container table-panel-fixed">
         <table class="data-table">
           <thead>
             <tr>
@@ -202,8 +203,13 @@ export class Productos {
 
     const paginatedProductos = this.getPaginatedProductos()
     
+    const colSpan = isAdmin ? 10 : 9
     if (paginatedProductos.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="${isAdmin ? 10 : 9}" style="padding: 40px; text-align: center; color: #64748B;">${this.productos.length === 0 ? 'No hay productos registrados' : 'No se encontraron resultados'}</td></tr>`
+      tbody.innerHTML = padTableBodyHtml(
+        `<tr><td colspan="${colSpan}" style="padding: 40px; text-align: center; color: #64748B;">${this.serverTotal === 0 ? 'No hay productos registrados' : 'No se encontraron resultados'}</td></tr>`,
+        this.itemsPerPage,
+        colSpan
+      )
       return
     }
 
@@ -259,7 +265,7 @@ export class Productos {
       
       html += `</tr>`
     })
-    tbody.innerHTML = html
+    tbody.innerHTML = padTableBodyHtml(html, this.itemsPerPage, colSpan)
   }
 
   openProductoModal() {

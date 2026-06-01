@@ -3,6 +3,7 @@ import { PaginationAdvanced } from '../components/PaginationAdvanced.js'
 import { GlobalModal } from '../components/GlobalModal.js'
 import { showErrorAlert, showSuccessAlert } from '../utils/errorHandler.js'
 import { validarCedula, obtenerErrorCedula } from '../utils/cedulaValidator.js'
+import { padTableBodyHtml } from '../utils/tableUi.js'
 import Swal from 'sweetalert2'
 
 const ITEMS_PER_PAGE = 10
@@ -78,7 +79,7 @@ export class Clientes {
       </div>
     ` : `
       <!-- Table -->
-      <div class="table-container" style="overflow-x: auto;">
+      <div class="table-container table-panel-fixed" style="overflow-x: auto;">
         <table class="table" style="width: 100%; border-collapse: collapse;">
           <thead style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0;">
             <tr>
@@ -227,12 +228,17 @@ export class Clientes {
 
     const paginatedClientes = this.getPaginatedClientes()
     
+    const colSpan = isAdmin ? 7 : 6
     if (paginatedClientes.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}" style="padding: 40px; text-align: center; color: #64748B;">${this.clientes.length === 0 ? 'No hay clientes registrados' : 'No se encontraron resultados'}</td></tr>`
+      tbody.innerHTML = padTableBodyHtml(
+        `<tr><td colspan="${colSpan}" style="padding: 40px; text-align: center; color: #64748B;">${this.serverTotal === 0 ? 'No hay clientes registrados' : 'No se encontraron resultados'}</td></tr>`,
+        this.itemsPerPage,
+        colSpan
+      )
       return
     }
 
-    tbody.innerHTML = paginatedClientes.map(cliente => `
+    const rowsHtml = paginatedClientes.map(cliente => `
       <tr style="border-bottom: 1px solid #E2E8F0;">
         <td style="padding: 15px; color: #1E293B;">${cliente.nombre || 'N/A'}</td>
         <td style="padding: 15px; color: #1E293B;">${this.formatearCedula(cliente.cedula || cliente.documento || '')}</td>
@@ -256,6 +262,8 @@ export class Clientes {
         ` : ''}
       </tr>
     `).join('')
+
+    tbody.innerHTML = padTableBodyHtml(rowsHtml, this.itemsPerPage, colSpan)
   }
 
   openClienteModal() {
