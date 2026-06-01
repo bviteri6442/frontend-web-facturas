@@ -35,7 +35,10 @@ VITE_API_BASE_URL=http://localhost:56398/api
 # VITE_API_BASE_URL=https://localhost:56397/api
 ```
 
-La variable correcta es **`VITE_API_BASE_URL`** (ver `src/config/api.js`).
+La variable correcta es **`VITE_API_BASE_URL`** (ver `src/config/api.js`).  
+Tambien se acepta `VITE_API_URL` por compatibilidad.
+
+**Importante:** Tras cambiar `.env.local`, reinicia `npm run dev`. Todos los servicios (`http-client`, `axios`, PDFs) leen la misma URL.
 
 ---
 

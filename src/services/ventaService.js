@@ -1,7 +1,8 @@
 // Servicio de Ventas
 import { httpClient } from './http-client.js'
+import { API_ENDPOINTS } from '../config/api.js'
 
-const ENDPOINT_VENTAS = '/ventas'
+const ENDPOINT_VENTAS = API_ENDPOINTS.VENTAS
 
 export const ventaService = {
   async getAll(filters = {}) {
@@ -135,21 +136,7 @@ export const ventaService = {
     try {
       console.log('[ventaService] Descargando PDF por ID:', ventaId)
       
-      const token = localStorage.getItem('authToken')
-      const url = `https://localhost:56397/api${ENDPOINT_VENTAS}/${ventaId}/pdf`
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error HTTP ${response.status}`)
-      }
-
-      const blob = await response.blob()
+      const blob = await httpClient.getBlob(API_ENDPOINTS.VENTAS_PDF(ventaId))
       if (!blob || blob.size === 0) {
         throw new Error('PDF vacío')
       }

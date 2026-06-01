@@ -10,15 +10,20 @@ const apiClient = axios.create({
   }
 })
 
-// Request interceptor - Add JWT token
+// Request interceptor - Add JWT token + headers ngrok
 apiClient.interceptors.request.use(
   (config) => {
-    // Add token if available
     const token = localStorage.getItem('authToken')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    console.log(`[AXIOS] ${config.method.toUpperCase()} ${config.url}`)
+    const fullUrl = config.baseURL && config.url
+      ? `${config.baseURL.replace(/\/$/, '')}/${config.url.replace(/^\//, '')}`
+      : config.url || ''
+    if (fullUrl.includes('ngrok')) {
+      config.headers['ngrok-skip-browser-warning'] = 'true'
+    }
+    console.log(`[AXIOS] ${config.method?.toUpperCase()} ${config.url}`)
     return config
   },
   (error) => {

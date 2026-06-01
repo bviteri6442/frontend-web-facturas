@@ -1,8 +1,12 @@
-// HTTP Client con Fetch API
-// Maneja token JWT, errores globales y reintentos
-// Compatible con Vanilla JS
+// Cliente HTTP (fetch) — usa siempre API_BASE_URL desde src/config/api.js
+import { API_BASE_URL, apiUrl } from '../config/api.js'
 
-const API_BASE_URL = 'https://localhost:56397/api'
+function applyNgrokHeaders(headers, url) {
+  if (url && url.includes('ngrok')) {
+    headers['ngrok-skip-browser-warning'] = 'true'
+  }
+  return headers
+}
 
 class HttpClient {
   constructor() {
@@ -10,39 +14,48 @@ class HttpClient {
     this.defaultHeaders = {
       'Content-Type': 'application/json'
     }
-    this.timeout = 10000 // 10 segundos
+    this.timeout = 30000
   }
 
-  getHeaders() {
-    const headers = { ...this.defaultHeaders }
+  getHeaders(url, extra = {}) {
+    const headers = { ...this.defaultHeaders, ...extra }
     const token = localStorage.getItem('authToken')
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers.Authorization = `Bearer ${token}`
     }
-    return headers
+    return applyNgrokHeaders(headers, url || this.baseURL)
+  }
+
+  resolveUrl(endpoint) {
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint
+    }
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+    return `${this.baseURL}${path}`
   }
 
   async request(method, endpoint, data = null, options = {}) {
     try {
-      const url = `${this.baseURL}${endpoint}`
+      const url = this.resolveUrl(endpoint)
+      const { headers: extraHeaders, ...restOptions } = options
       const config = {
         method,
-        headers: this.getHeaders(),
+        headers: this.getHeaders(url, extraHeaders),
         signal: AbortSignal.timeout(this.timeout),
-        ...(data && { body: JSON.stringify(data) }),
-        ...options
+        ...restOptions
+      }
+      if (data) {
+        config.body = JSON.stringify(data)
       }
 
-      console.log(`[HTTP] ${method.toUpperCase()} ${endpoint}`)
+      console.log(`[HTTP] ${method.toUpperCase()} ${url}`)
       const response = await fetch(url, config)
       console.log(`[HTTP] Response received. Status: ${response.status}`)
 
-      // Manejar respuesta según status
       if (response.status === 401) {
-        console.warn('[HTTP] Sesión expirada (401)')
+        console.warn('[HTTP] Sesion expirada (401)')
         localStorage.removeItem('authToken')
         localStorage.removeItem('currentUser')
-        // Redirigir a login
         if (typeof window !== 'undefined') {
           window.location.href = '/login.html'
         }
@@ -50,11 +63,11 @@ class HttpClient {
       }
 
       if (response.status === 403) {
-        throw new Error('No tienes permisos para realizar esta acción.')
+        throw new Error('No tienes permisos para realizar esta accion.')
       }
 
       if (response.status >= 500) {
-        throw new Error('Error del servidor. Inténtalo nuevamente.')
+        throw new Error('Error del servidor. Intentalo nuevamente.')
       }
 
       if (!response.ok) {
@@ -62,7 +75,6 @@ class HttpClient {
         try {
           const errorData = await response.json()
           console.error('[HTTP] Error response data:', errorData)
-          // Priorizar errores de validación específicos de campo sobre el título genérico
           const fieldErrors = errorData.errors
             ? Object.entries(errorData.errors).map(([, msgs]) => msgs.join(', ')).join('. ')
             : null
@@ -71,32 +83,53 @@ class HttpClient {
           console.error('[HTTP] Error parsing error response:', parseError)
           errorMessage = (await response.text()) || errorMessage
         }
-        console.error(`[HTTP] Request failed with message: ${errorMessage}`)
         throw new Error(errorMessage)
       }
 
-      // Intentar parsear JSON
       const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('application/json')) {
         const jsonData = await response.json()
-        console.log(`[HTTP] Response JSON:`, jsonData)
+        console.log('[HTTP] Response JSON:', jsonData)
         return jsonData
       }
 
-      // Si es 201/204 sin body, considerar éxito
       if (response.status === 201 || response.status === 204) {
-        console.log(`[HTTP] Success with status ${response.status}, returning empty success`)
         return { success: true }
       }
 
-      console.log(`[HTTP] Response with status ${response.status}, no JSON body`)
       return null
     } catch (error) {
       if (error.name === 'AbortError') {
-        throw new Error('La solicitud tardó demasiado tiempo. Verifica tu conexión.')
+        throw new Error('La solicitud tardo demasiado tiempo. Verifica tu conexion.')
       }
       throw error
     }
+  }
+
+  /** GET que devuelve Blob (PDF, archivos binarios) */
+  async getBlob(endpoint) {
+    const url = this.resolveUrl(endpoint)
+    const headers = this.getHeaders(url, {})
+    delete headers['Content-Type']
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(this.timeout)
+    })
+
+    if (response.status === 401) {
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('currentUser')
+      window.location.href = '/login.html'
+      return null
+    }
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP ${response.status}`)
+    }
+
+    return response.blob()
   }
 
   get(endpoint, options = {}) {
@@ -121,3 +154,4 @@ class HttpClient {
 }
 
 export const httpClient = new HttpClient()
+export { apiUrl }
