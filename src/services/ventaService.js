@@ -1,6 +1,7 @@
 // Servicio de Ventas
 import { httpClient } from './http-client.js'
 import { API_ENDPOINTS } from '../config/api.js'
+import { unwrapList } from '../utils/apiResponse.js'
 
 const ENDPOINT_VENTAS = API_ENDPOINTS.VENTAS
 
@@ -10,10 +11,10 @@ export const ventaService = {
       const params = new URLSearchParams(filters).toString()
       const endpoint = `${ENDPOINT_VENTAS}${params ? '?' + params : ''}`
       const response = await httpClient.get(endpoint)
-      return response?.data || response || []
+      return unwrapList(response)
     } catch (error) {
       console.error('[ventaService] Error en getAll:', error)
-      return []
+      throw error
     }
   },
 

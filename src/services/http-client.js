@@ -86,18 +86,41 @@ class HttpClient {
         throw new Error(errorMessage)
       }
 
-      const contentType = response.headers.get('content-type')
-      if (contentType && contentType.includes('application/json')) {
-        const jsonData = await response.json()
+      const contentType = response.headers.get('content-type') || ''
+      const rawText = await response.text()
+
+      if (contentType.includes('application/json')) {
+        if (!rawText.trim()) {
+          console.warn('[HTTP] Respuesta JSON vacia en', url)
+          return null
+        }
+        const jsonData = JSON.parse(rawText)
         console.log('[HTTP] Response JSON:', jsonData)
         return jsonData
+      }
+
+      if (rawText.trim().startsWith('<')) {
+        throw new Error(
+          'El servidor devolvio HTML en lugar de JSON (aviso de ngrok o URL incorrecta). ' +
+          'En desarrollo usa VITE_API_BASE_URL=/api y en .env.local la URL de ngrok sin /api para el proxy, ' +
+          'o la URL completa https://xxx.ngrok-free.app/api. Reinicia npm run dev.'
+        )
       }
 
       if (response.status === 201 || response.status === 204) {
         return { success: true }
       }
 
-      return null
+      if (!rawText.trim()) {
+        console.warn('[HTTP] Respuesta vacia (sin JSON) en', url, 'status', response.status)
+        return null
+      }
+
+      try {
+        return JSON.parse(rawText)
+      } catch {
+        throw new Error(`Respuesta no valida del servidor (${response.status})`)
+      }
     } catch (error) {
       if (error.name === 'AbortError') {
         throw new Error('La solicitud tardo demasiado tiempo. Verifica tu conexion.')

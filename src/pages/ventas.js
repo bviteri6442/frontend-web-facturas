@@ -346,6 +346,14 @@ export class Ventas {
     } catch (error) {
       console.error('[VENTAS] Error cargando:', error)
       this.ventas = []
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al cargar ventas',
+          text: error.message || 'Revisa .env.local y que el backend/ngrok esten activos.',
+          confirmButtonColor: '#f05454'
+        })
+      }
     } finally {
       this.loading = false
     }

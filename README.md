@@ -38,6 +38,15 @@ VITE_API_BASE_URL=http://localhost:56398/api
 La variable correcta es **`VITE_API_BASE_URL`** (ver `src/config/api.js`).  
 Tambien se acepta `VITE_API_URL` por compatibilidad.
 
+**Conectar al backend de un companero (ngrok):** guia completa en [`CONEXION_BACKEND_NGROK.md`](CONEXION_BACKEND_NGROK.md).
+
+**Recomendado en `npm run dev` + ngrok** (evita CORS y paginas HTML de ngrok):
+
+```env
+VITE_API_PROXY_TARGET=https://TU-SUBDOMINIO.ngrok-free.app
+VITE_API_BASE_URL=/api
+```
+
 **Importante:** Tras cambiar `.env.local`, reinicia `npm run dev`. Todos los servicios (`http-client`, `axios`, PDFs) leen la misma URL.
 
 ---

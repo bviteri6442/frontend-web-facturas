@@ -178,6 +178,14 @@ export class Clientes {
     } catch (error) {
       console.error('[CLIENTES] Error cargando:', error)
       this.clientes = []
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al cargar clientes',
+          text: error.message || 'Revisa .env.local y que el backend/ngrok esten activos.',
+          confirmButtonColor: '#f05454'
+        })
+      }
     } finally {
       this.loading = false
     }

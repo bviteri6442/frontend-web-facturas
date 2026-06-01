@@ -115,19 +115,25 @@ export class Dashboard {
       console.log('[DASHBOARD] Cargando estadísticas desde backend...')
       
       // Cargar datos en paralelo
-      const [clientes, productos, ventas] = await Promise.all([
+      const [clientes, productosResult, ventas] = await Promise.all([
         clienteService.getAll(),
         productoService.getAll(),
         ventaService.getAll()
       ])
 
+      const productosLista = productosResult?.productos ?? (Array.isArray(productosResult) ? productosResult : [])
+
       // Calcular estadísticas
-      const totalVentas = Array.isArray(ventas) ? ventas.reduce((sum, v) => sum + (v.montoTotal || v.monto || 0), 0) : 0
-      const stockBajo = Array.isArray(productos) ? productos.filter(p => (p.stockActual || p.stock || 0) <= (p.stockMinimo || 10)).length : 0
+      const totalVentas = Array.isArray(ventas)
+        ? ventas.reduce((sum, v) => sum + (v.totalVenta || v.montoTotal || v.monto || 0), 0)
+        : 0
+      const stockBajo = productosLista.filter(
+        (p) => (p.stockActual || p.stock || 0) <= (p.stockMinimo || 10)
+      ).length
 
       this.stats = {
         totalClientes: Array.isArray(clientes) ? clientes.length : 0,
-        totalProductos: Array.isArray(productos) ? productos.length : 0,
+        totalProductos: productosLista.length,
         totalVentas: totalVentas,
         productosStockBajo: stockBajo
       }

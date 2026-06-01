@@ -149,6 +149,14 @@ export class Productos {
     } catch (error) {
       console.error('[PRODUCTOS] Error cargando:', error)
       this.productos = []
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al cargar productos',
+          text: error.message || 'Revisa .env.local y que el backend/ngrok esten activos.',
+          confirmButtonColor: '#f05454'
+        })
+      }
     } finally {
       this.loading = false
     }

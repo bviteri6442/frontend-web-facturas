@@ -1,5 +1,6 @@
 // Servicio de Productos
 import { httpClient } from './http-client.js'
+import { assertApiData } from '../utils/apiResponse.js'
 
 const ENDPOINT_PRODUCTOS = '/productos'
 
@@ -31,6 +32,7 @@ export const productoService = {
       if (params.search) query.append('search', params.search)
       const url = query.toString() ? `${ENDPOINT_PRODUCTOS}?${query}` : ENDPOINT_PRODUCTOS
       const response = await httpClient.get(url)
+      assertApiData(response, 'productos')
       const body = response?.data || response
       // El backend devuelve { total, page, limit, productos: [...] }
       if (body && Array.isArray(body.productos)) {
@@ -46,7 +48,7 @@ export const productoService = {
       return { total: productos.length, page: 1, limit: productos.length, productos: productos.map(normalizeProducto) }
     } catch (error) {
       console.error('[productoService] Error en getAll:', error)
-      return { total: 0, page: 1, limit: 30, productos: [] }
+      throw error
     }
   },
 

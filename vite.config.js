@@ -3,6 +3,9 @@ import path from 'path'
 
 /** Origen del proxy /api en desarrollo (sin sufijo /api) */
 function proxyTargetFromEnv(env) {
+  if (env.VITE_API_PROXY_TARGET) {
+    return env.VITE_API_PROXY_TARGET.replace(/\/api\/?$/i, '').replace(/\/+$/, '') || 'http://localhost:56398'
+  }
   const base =
     env.VITE_API_BASE_URL ||
     env.VITE_API_URL ||
@@ -28,7 +31,14 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: proxyTarget,
           changeOrigin: true,
-          secure: false
+          secure: false,
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq) => {
+              if (proxyTarget.includes('ngrok')) {
+                proxyReq.setHeader('ngrok-skip-browser-warning', 'true')
+              }
+            })
+          }
         }
       }
     },

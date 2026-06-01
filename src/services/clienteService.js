@@ -1,5 +1,6 @@
 // Servicio de Clientes
 import { httpClient } from './http-client.js'
+import { unwrapList } from '../utils/apiResponse.js'
 
 const ENDPOINT_CLIENTES = '/clientes'
 
@@ -7,10 +8,10 @@ export const clienteService = {
   async getAll() {
     try {
       const response = await httpClient.get(ENDPOINT_CLIENTES)
-      return response?.data || response || []
+      return unwrapList(response)
     } catch (error) {
       console.error('[clienteService] Error en getAll:', error)
-      return []
+      throw error
     }
   },
 

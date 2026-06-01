@@ -33,10 +33,19 @@ const envUrl =
   import.meta.env.VITE_API_URL ||
   ''
 
-export const API_BASE_URL = normalizeApiBaseUrl(envUrl) || DEFAULT_LOCAL_API
+/** En dev sin .env: /api pasa por el proxy de Vite (evita CORS y avisos de ngrok) */
+const DEV_PROXY_API = '/api'
 
-/** true si la URL viene de .env (no del fallback local) */
+export const API_BASE_URL =
+  normalizeApiBaseUrl(envUrl) ||
+  (import.meta.env.DEV ? DEV_PROXY_API : DEFAULT_LOCAL_API)
+
+/** true si la URL viene de .env (no del fallback local/proxy) */
 export const API_CONFIGURED_VIA_ENV = Boolean(normalizeApiBaseUrl(envUrl))
+
+/** true si las peticiones van al proxy relativo /api (recomendado en npm run dev + ngrok) */
+export const API_USES_VITE_PROXY =
+  import.meta.env.DEV && API_BASE_URL === DEV_PROXY_API
 
 /**
  * Construye URL absoluta para un endpoint (/ventas, /auth/login, etc.)
@@ -49,7 +58,12 @@ export function apiUrl(path = '') {
 }
 
 if (import.meta.env.DEV) {
-  console.info('[API] Base URL:', API_BASE_URL, API_CONFIGURED_VIA_ENV ? '(env)' : '(default local)')
+  const mode = API_CONFIGURED_VIA_ENV
+    ? '(env)'
+    : API_USES_VITE_PROXY
+      ? '(proxy Vite → revisa VITE_API_PROXY_TARGET o VITE_API_BASE_URL en .env.local)'
+      : '(default local)'
+  console.info('[API] Base URL:', API_BASE_URL, mode)
 }
 
 export const API_ENDPOINTS = {
