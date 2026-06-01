@@ -21,6 +21,7 @@ class App {
 
     this.setupDOM()
     this.setupNavigation()
+    this.setupMobileMenu()
     this.manageAdminMenu()
     this.setupEventListeners()
     this.navigateToDashboard()
@@ -104,7 +105,51 @@ class App {
       console.log(`📄 Navegando a: ${pageName}`)
       
       router.navigateTo(pageName)
+      this.closeMobileMenu()
     })
+  }
+
+  setupMobileMenu() {
+    const toggle = document.getElementById('menuToggle')
+    const sidebar = document.getElementById('sidebar')
+    const backdrop = document.getElementById('sidebarBackdrop')
+    if (!toggle || !sidebar) return
+
+    toggle.addEventListener('click', () => {
+      if (sidebar.classList.contains('is-open')) {
+        this.closeMobileMenu()
+      } else {
+        this.openMobileMenu()
+      }
+    })
+
+    backdrop?.addEventListener('click', () => this.closeMobileMenu())
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 991) {
+        this.closeMobileMenu()
+      }
+    })
+  }
+
+  openMobileMenu() {
+    const sidebar = document.getElementById('sidebar')
+    const backdrop = document.getElementById('sidebarBackdrop')
+    const toggle = document.getElementById('menuToggle')
+    sidebar?.classList.add('is-open')
+    backdrop?.classList.add('is-visible')
+    document.body.classList.add('nav-open')
+    toggle?.setAttribute('aria-expanded', 'true')
+  }
+
+  closeMobileMenu() {
+    const sidebar = document.getElementById('sidebar')
+    const backdrop = document.getElementById('sidebarBackdrop')
+    const toggle = document.getElementById('menuToggle')
+    sidebar?.classList.remove('is-open')
+    backdrop?.classList.remove('is-visible')
+    document.body.classList.remove('nav-open')
+    toggle?.setAttribute('aria-expanded', 'false')
   }
 
   manageAdminMenu() {
