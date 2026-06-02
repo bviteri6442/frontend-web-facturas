@@ -10,6 +10,7 @@ export class EliminacionesVentas {
     this.eliminadas = []
     this.filtradas = []
     this.searchTerm = ''
+    this.searchType = 'todos' // 'todos', 'numero', 'cliente'
     this.currentPage = 1
     this.itemsPerPage = ITEMS_PER_PAGE
     this.pagination = null
@@ -28,13 +29,26 @@ export class EliminacionesVentas {
         <div id="statsVentas" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px;"></div>
 
         <div class="card" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;">
-          <div class="card-header" style="padding: 20px; border-bottom: 1px solid #E2E8F0;">
-            <input 
-              type="text" 
-              class="search-box" 
-              placeholder="Buscar por número de factura o cliente..."
-              style="width: 100%; padding: 10px 15px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 14px; box-sizing: border-box;"
-            />
+          <div class="card-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #E2E8F0;">
+            <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; align-items: flex-end;">
+              <div>
+                <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+                <select id="searchDeletedVentasType" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+                  <option value="todos">Todos los campos</option>
+                  <option value="numero">Número Factura</option>
+                  <option value="cliente">Cliente</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+                <input 
+                  type="text" 
+                  class="search-box" 
+                  placeholder="Ingresa tu búsqueda..."
+                  style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; outline: none; box-sizing: border-box;"
+                />
+              </div>
+            </div>
           </div>
 
           <div class="table-container" style="overflow-x: auto;">
@@ -87,6 +101,18 @@ export class EliminacionesVentas {
           this.currentPage = 1
           this.filterVentas()
           this.updateTableAndPagination()
+        })
+      }
+
+      // Event listener para el comboBox de tipo de búsqueda
+      const searchTypeSelect = document.getElementById('searchDeletedVentasType')
+      if (searchTypeSelect) {
+        searchTypeSelect.addEventListener('change', (e) => {
+          this.searchType = e.target.value
+          this.currentPage = 1
+          this.filterVentas()
+          this.updateTableAndPagination()
+          console.log('[ELIM-VENTAS] Tipo de búsqueda cambiado a:', this.searchType)
         })
       }
 
@@ -331,10 +357,21 @@ export class EliminacionesVentas {
       this.filtradas = [...this.eliminadas]
     } else {
       const term = this.searchTerm.toLowerCase()
-      this.filtradas = this.eliminadas.filter(v =>
-        v.numeroFactura?.includes(term) ||
-        v.clienteNombre?.toLowerCase().includes(term)
-      )
+      this.filtradas = this.eliminadas.filter(v => {
+        switch (this.searchType) {
+          case 'numero':
+            return (v.numeroFactura || '').toLowerCase().includes(term)
+          
+          case 'cliente':
+            return (v.clienteNombre || v.cliente || '').toLowerCase().includes(term)
+          
+          case 'todos':
+          default:
+            const numero = (v.numeroFactura || '').toLowerCase()
+            const cliente = (v.clienteNombre || v.cliente || '').toLowerCase()
+            return numero.includes(term) || cliente.includes(term)
+        }
+      })
     }
   }
 

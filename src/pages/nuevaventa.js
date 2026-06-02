@@ -15,6 +15,7 @@ export class NuevaVenta {
     this.clienteSeleccionado = null
     this.filteredClientes = []
     this.precioProductoSeleccionado = null
+    this.hasUnsavedChanges = false
     
     // Paginación
     this.clientesPaginaActual = 1
@@ -251,6 +252,7 @@ export class NuevaVenta {
           this.clienteSeleccionado = cliente
           document.getElementById('clienteNombre').textContent = cliente.nombre + ' ' + (cliente.apellido || '') + ' - ' + (cliente.documento || cliente.cedula || '')
           document.getElementById('clienteSeleccionado').style.display = 'block'
+          this.hasUnsavedChanges = true
           Swal.close()
         }
       })
@@ -505,6 +507,7 @@ export class NuevaVenta {
       this.detalles.push(detalle)
     }
 
+    this.hasUnsavedChanges = true
     this.updateDetallesTable()
     this.calcularTotales()
 
@@ -728,6 +731,7 @@ export class NuevaVenta {
         // Redirigir después de que el usuario haga clic
         if (confirmResult.isConfirmed) {
           console.log('[NuevaVenta] Redirigiendo a ventas...')
+          this.hasUnsavedChanges = false
           if (window.router) {
             window.router.navigateTo('ventas')
           } else {
@@ -735,6 +739,7 @@ export class NuevaVenta {
           }
         } else if (confirmResult.isDenied) {
           // Limpiar el formulario para una nueva venta
+          this.hasUnsavedChanges = false
           this.detalles = []
           this.clienteSeleccionado = null
           this.precioProductoSeleccionado = null
@@ -822,7 +827,7 @@ export class NuevaVenta {
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Email:</label>
-          <input type="email" id="nuevoClienteEmail" placeholder="email@ejemplo.com" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="nuevoClienteEmail" placeholder="email@ejemplo.com" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
           <div id="emailError" style="color: #EF4444; font-size: 13px; margin-top: 5px; display: none;"></div>
         </div>
         <div style="margin-bottom: 15px;">
@@ -853,8 +858,13 @@ export class NuevaVenta {
           })
         }
 
-        // Validación de email en tiempo real
+        // Bloquear espacios en el email (como funciona en apellido)
         if (emailInput) {
+          emailInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\s/g, '')
+          })
+
+          // Validación de email en tiempo real
           emailInput.addEventListener('blur', () => {
             const email = emailInput.value.trim()
             if (email && !this.isValidEmail(email)) {
@@ -1256,6 +1266,35 @@ export class NuevaVenta {
     })
   }
 
+  // Confirmar antes de cancelar si hay cambios sin guardar
+  async confirmCancel() {
+    if (!this.hasUnsavedChanges) {
+      if (window.router) {
+        window.router.navigateTo('ventas')
+      }
+      return
+    }
+
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: '¿Cancelar venta?',
+      text: 'Tienes cambios sin guardar. Si cancelas, se perderán todos los datos ingresados.',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cancelar venta',
+      cancelButtonText: 'Seguir editando',
+      confirmButtonColor: '#f05454',
+      cancelButtonColor: '#4ea93b',
+      focusCancel: true
+    })
+
+    if (result.isConfirmed) {
+      this.hasUnsavedChanges = false
+      if (window.router) {
+        window.router.navigateTo('ventas')
+      }
+    }
+  }
+
   async init() {
     console.log('[NuevaVenta] Inicializando...')
     
@@ -1288,8 +1327,9 @@ export class NuevaVenta {
     }
 
     if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
-        window.location.href = '#/ventas'
+      cancelBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        this.confirmCancel()
       })
     }
 

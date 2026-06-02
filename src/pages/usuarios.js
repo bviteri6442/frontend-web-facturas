@@ -355,7 +355,7 @@ export class Usuarios {
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Email: <span style="color:red">*</span></label>
-          <input type="email" id="usuarioEmail" placeholder="Ejemplo: usuario@ejemplo.com" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="usuarioEmail" placeholder="Ejemplo: usuario@ejemplo.com" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
           <small style="color: #64748B; font-size: 12px;">Debe ser un email válido con punto después del @ (ej: usuario@dominio.com)</small>
         </div>
         <div style="margin-bottom: 15px;">
@@ -423,6 +423,14 @@ export class Usuarios {
       filtroSoloLetras('usuarioNombreUsuario')
       filtroSoloLetras('usuarioNombre')
       filtroSoloLetras('usuarioApellido')
+      
+      // Bloquear espacios en el email (como funciona en apellido)
+      const emailInput = document.getElementById('usuarioEmail')
+      if (emailInput) {
+        emailInput.addEventListener('input', (e) => {
+          e.target.value = e.target.value.replace(/\s/g, '')
+        })
+      }
       
       // Validar que contraseña no tenga espacios
       const passwordInput = document.getElementById('usuarioPassword')
@@ -894,7 +902,7 @@ export class Usuarios {
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Email: <span style="color:red">*</span></label>
-          <input type="email" id="usuarioEmail" placeholder="Ejemplo: usuario@ejemplo.com" value="${usuario.correo || usuario.email || ''}" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="usuarioEmail" placeholder="Ejemplo: usuario@ejemplo.com" value="${usuario.correo || usuario.email || ''}" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Contraseña (dejar vacío para mantener):</label>

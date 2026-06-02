@@ -42,6 +42,26 @@ export class Router {
       return
     }
 
+    // Interceptar navegación si estamos en nueva venta con cambios sin guardar
+    if (this.currentPage === 'nuevaventa' && window.ventaPage && window.ventaPage.hasUnsavedChanges) {
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: '¿Salir sin guardar?',
+        text: 'Tienes una venta en progreso con cambios sin guardar. Si sales, se perderán todos los datos ingresados.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, salir',
+        cancelButtonText: 'Seguir editando',
+        confirmButtonColor: '#f05454',
+        cancelButtonColor: '#4ea93b',
+        focusCancel: true
+      })
+
+      if (!result.isConfirmed) {
+        return
+      }
+      window.ventaPage.hasUnsavedChanges = false
+    }
+
     try {
       // Check if user has permission
       const user = JSON.parse(localStorage.getItem('currentUser') || '{}')

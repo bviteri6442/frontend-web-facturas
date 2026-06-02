@@ -10,6 +10,7 @@ export class Ventas {
     this.ventas = []
     this.filteredVentas = []
     this.searchTerm = ''
+    this.searchType = 'todos' // 'todos', 'numero', 'cliente'
     this.currentPage = 1
     this.itemsPerPage = ITEMS_PER_PAGE
     this.pagination = null
@@ -29,11 +30,25 @@ export class Ventas {
 
   <div class="card-panel">
     <div class="card-header">
-      <input 
-        type="text" 
-        class="search-box" 
-        placeholder="Buscar por número de factura o cliente..."
-      />
+      <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; align-items: flex-end;">
+        <div>
+          <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+          <select class="search-type-filter" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+            <option value="todos">Todos los campos</option>
+            <option value="numero">Número Factura</option>
+            <option value="cliente">Cliente</option>
+          </select>
+        </div>
+        <div>
+          <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+          <input 
+            type="text" 
+            class="search-box" 
+            placeholder="Ingresa tu búsqueda..."
+            style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; outline: none; box-sizing: border-box;"
+          />
+        </div>
+      </div>
     </div>
 
     ${this.loading ? `
@@ -93,6 +108,18 @@ export class Ventas {
           this.currentPage = 1
           this.filterVentas()
           this.updateTableAndPagination()
+        })
+      }
+
+      // Event listener para el comboBox de tipo de búsqueda
+      const searchTypeFilter = document.querySelector('.search-type-filter')
+      if (searchTypeFilter) {
+        searchTypeFilter.addEventListener('change', (e) => {
+          this.searchType = e.target.value
+          this.currentPage = 1
+          this.filterVentas()
+          this.updateTableAndPagination()
+          console.log('[VENTAS] Tipo de búsqueda cambiado a:', this.searchType)
         })
       }
 
@@ -364,10 +391,21 @@ export class Ventas {
       this.filteredVentas = [...this.ventas]
     } else {
       const term = this.searchTerm.toLowerCase()
-      this.filteredVentas = this.ventas.filter(v =>
-        v.numeroFactura?.includes(term) ||
-        v.clienteNombre?.toLowerCase().includes(term)
-      )
+      this.filteredVentas = this.ventas.filter(v => {
+        switch (this.searchType) {
+          case 'numero':
+            return (v.numeroFactura || '').toLowerCase().includes(term)
+          
+          case 'cliente':
+            return (v.clienteNombre || v.cliente || '').toLowerCase().includes(term)
+          
+          case 'todos':
+          default:
+            const numero = (v.numeroFactura || '').toLowerCase()
+            const cliente = (v.clienteNombre || v.cliente || '').toLowerCase()
+            return numero.includes(term) || cliente.includes(term)
+        }
+      })
     }
   }
 
