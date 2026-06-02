@@ -13,6 +13,7 @@ export class Productos {
     this.productos = []
     this.filteredProductos = []
     this.searchTerm = ''
+    this.searchType = 'todos' // 'todos', 'nombre', 'codigo', 'categoria'
     this.currentPage = 1
     this.itemsPerPage = ITEMS_PER_PAGE
     this.serverTotal = 0
@@ -24,6 +25,36 @@ export class Productos {
   isAdmin() {
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
     return user.rol === 'Admin' || user.roleId === 1
+  }
+
+  // Filtrar productos según el tipo de búsqueda seleccionado
+  filtrarProductosLocal() {
+    if (!this.searchTerm.trim()) {
+      this.filteredProductos = [...this.productos]
+      return
+    }
+
+    const term = this.searchTerm.toLowerCase()
+
+    this.filteredProductos = this.productos.filter(producto => {
+      switch (this.searchType) {
+        case 'nombre':
+          return (producto.nombre || '').toLowerCase().includes(term)
+        
+        case 'codigo':
+          return (producto.codigo || '').toLowerCase().includes(term)
+        
+        case 'categoria':
+          return (producto.categoria || '').toLowerCase().includes(term)
+        
+        case 'todos':
+        default:
+          const nombre = (producto.nombre || '').toLowerCase()
+          const codigo = (producto.codigo || '').toLowerCase()
+          const categoria = (producto.categoria || '').toLowerCase()
+          return nombre.includes(term) || codigo.includes(term) || categoria.includes(term)
+      }
+    })
   }
 
   render() {
@@ -39,13 +70,23 @@ export class Productos {
     ` : ''}
   </div>
 
-  <div class="card-panel">
-    <div class="card-header">
-      <input 
-        type="text" 
-        class="search-box" 
-        placeholder="Buscar por nombre o descripción..."
-      />
+  <div class="card" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;">
+    <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #E2E8F0;">
+      <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; align-items: flex-end;">
+        <div>
+          <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+          <select class="search-type-filter" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+            <option value="todos">Todos los campos</option>
+            <option value="nombre">Nombre</option>
+            <option value="codigo">Código</option>
+            <option value="categoria">Categoría</option>
+          </select>
+        </div>
+        <div>
+          <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+          <input type="text" class="search-box" placeholder="Ingresa tu búsqueda..." style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; outline: none; box-sizing: border-box;"/>
+        </div>
+      </div>
     </div>
 
     ${this.loading ? `
@@ -92,7 +133,18 @@ export class Productos {
     console.log('[PRODUCTOS] Configurando event listeners...')
     
     const searchBox = document.querySelector('.search-box')
+    const searchTypeSelect = document.querySelector('.search-type-filter')
     const btnAdd = document.querySelector('.btn-add-producto')
+
+    // Listener para cambio de tipo de búsqueda
+    if (searchTypeSelect) {
+      searchTypeSelect.addEventListener('change', (e) => {
+        this.searchType = e.target.value
+        this.currentPage = 1
+        this.filtrarProductosLocal()
+        this.loadProductos()
+      })
+    }
 
     // Search
     if (searchBox) {
@@ -100,7 +152,10 @@ export class Productos {
         this.searchTerm = e.target.value
         this.currentPage = 1
         clearTimeout(this.searchDebounce)
-        this.searchDebounce = setTimeout(() => this.loadProductos(), 400)
+        this.searchDebounce = setTimeout(() => {
+          this.filtrarProductosLocal()
+          this.loadProductos()
+        }, 400)
       })
     }
 

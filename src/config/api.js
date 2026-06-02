@@ -10,7 +10,7 @@
  *   Railway:     https://tu-api.up.railway.app/api
  */
 
-const DEFAULT_LOCAL_API = 'http://localhost:56398/api'
+const DEFAULT_LOCAL_API = 'https://backend-facturas-production-a3ab.up.railway.app/api'
 
 /**
  * Normaliza la URL base: sin barra final, siempre termina en /api

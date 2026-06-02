@@ -13,6 +13,7 @@ export class Clientes {
     this.clientes = []
     this.filteredClientes = []
     this.searchTerm = ''
+    this.searchType = 'todos' // 'todos', 'nombre', 'documento', 'telefono', 'correo'
     this.currentPage = 1
     this.itemsPerPage = ITEMS_PER_PAGE
     this.serverTotal = 0
@@ -44,6 +45,44 @@ export class Clientes {
     return numeros.substring(0, 2) + '-' + numeros.substring(2, 6) + '-' + numeros.substring(6)
   }
 
+  // Filtrar clientes según el tipo de búsqueda seleccionado
+  filtrarClientesLocal() {
+    if (!this.searchTerm.trim()) {
+      this.filteredClientes = [...this.clientes]
+      return
+    }
+
+    const term = this.searchTerm.toLowerCase()
+
+    this.filteredClientes = this.clientes.filter(cliente => {
+      switch (this.searchType) {
+        case 'nombre':
+          const nombreCompleto = `${cliente.nombre || ''} ${cliente.apellido || ''}`.toLowerCase()
+          return nombreCompleto.includes(term)
+        
+        case 'documento':
+          const documento = (cliente.documento || cliente.cedula || '').toString().toLowerCase()
+          return documento.includes(term)
+        
+        case 'telefono':
+          const telefono = (cliente.telefono || '').toString().toLowerCase()
+          return telefono.includes(term)
+        
+        case 'correo':
+          const correo = (cliente.email || client.correo || '').toLowerCase()
+          return correo.includes(term)
+        
+        case 'todos':
+        default:
+          const nombreComp = `${cliente.nombre || ''} ${cliente.apellido || ''}`.toLowerCase()
+          const doc = (cliente.documento || cliente.cedula || '').toString().toLowerCase()
+          const tel = (cliente.telefono || '').toString().toLowerCase()
+          const mail = (cliente.email || cliente.correo || '').toLowerCase()
+          return nombreComp.includes(term) || doc.includes(term) || tel.includes(term) || mail.includes(term)
+      }
+    })
+  }
+
   isAdmin() {
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
     return user.rol === 'Admin' || user.roleId === 1
@@ -64,11 +103,25 @@ export class Clientes {
 
   <div class="card-panel">
     <div class="card-header">
-      <input 
-        type="text" 
-        class="search-box" 
-        placeholder="Buscar por nombre, documento, teléfono o correo..."
-      />
+      <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; align-items: flex-end;">
+        <div>
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.875rem; color: #475569;">Buscar por:</label>
+          <select class="search-type-filter" style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid rgba(78, 169, 59, 0.25); border-radius: 8px; font-size: 0.9rem; color: #222629; background: #fff; cursor: pointer;">
+            <option value="todos">Todos los campos</option>
+            <option value="nombre">Nombre</option>
+            <option value="documento">Documento</option>
+            <option value="telefono">Teléfono</option>
+            <option value="correo">Correo</option>
+          </select>
+        </div>
+        <div>
+          <input 
+            type="text" 
+            class="search-box" 
+            placeholder="Ingresa tu búsqueda..."
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -116,15 +169,30 @@ export class Clientes {
     console.log('[CLIENTES] Configurando event listeners...')
     
     const searchBox = document.querySelector('.search-box')
+    const searchTypeFilter = document.querySelector('.search-type-filter')
     const btnAdd = document.querySelector('.btn-add-cliente')
     
-    // Search
+    // Search type filter
+    if (searchTypeFilter) {
+      searchTypeFilter.addEventListener('change', (e) => {
+        this.searchType = e.target.value
+        this.currentPage = 1
+        this.filtrarClientesLocal()
+        this.updateTableAndPagination()
+        console.log('[CLIENTES] Tipo de búsqueda cambiado a:', this.searchType)
+      })
+    }
+    
+    // Search box
     if (searchBox) {
       searchBox.addEventListener('input', (e) => {
         this.searchTerm = e.target.value
         this.currentPage = 1
         clearTimeout(this.searchDebounce)
-        this.searchDebounce = setTimeout(() => this.loadClientes(), 400)
+        this.searchDebounce = setTimeout(() => {
+          this.filtrarClientesLocal()
+          this.updateTableAndPagination()
+        }, 400)
       })
     }
 
@@ -168,7 +236,7 @@ export class Clientes {
         activo: true
       })
       this.clientes = data
-      this.filteredClientes = data
+      this.filtrarClientesLocal()  // Aplicar filtrado local
       this.serverTotal = total
       console.log('[CLIENTES] Página cargada:', data.length, 'de', total)
       if (!this.pagination) this.setupPagination()
@@ -176,6 +244,7 @@ export class Clientes {
     } catch (error) {
       console.error('[CLIENTES] Error cargando:', error)
       this.clientes = []
+      this.filteredClientes = []
       if (typeof Swal !== 'undefined') {
         Swal.fire({
           icon: 'error',
@@ -335,6 +404,15 @@ export class Clientes {
           } else {
             e.target.value = valor
           }
+        })
+      }
+      
+      // Validar que email no tenga espacios
+      const emailInput = document.getElementById('clienteEmail')
+      if (emailInput) {
+        emailInput.addEventListener('input', (e) => {
+          // Remover espacios del email
+          e.target.value = e.target.value.replace(/\s+/g, '')
         })
       }
       
@@ -522,6 +600,15 @@ export class Clientes {
     setTimeout(() => {
       const form = document.getElementById('clienteForm')
       const btnCancel = document.querySelector('.btn-cancel-modal')
+      
+      // Validar que email no tenga espacios
+      const emailInput = document.getElementById('clienteEmail')
+      if (emailInput) {
+        emailInput.addEventListener('input', (e) => {
+          // Remover espacios del email
+          e.target.value = e.target.value.replace(/\s+/g, '')
+        })
+      }
       
       // Máscara de teléfono en edición
       const telefonoInput = document.getElementById('clienteTelefono')

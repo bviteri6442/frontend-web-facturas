@@ -14,6 +14,7 @@ export class Usuarios {
     this.usuarios = []
     this.filteredUsuarios = []
     this.searchTerm = ''
+    this.searchType = 'todos' // 'todos', 'nombreusuario', 'nombre', 'email'
     this.currentPage = 1
     this.itemsPerPage = ITEMS_PER_PAGE
     this.serverTotal = 0
@@ -41,6 +42,37 @@ export class Usuarios {
     }
   }
 
+  // Filtrar usuarios según el tipo de búsqueda seleccionado
+  filtrarUsuariosLocal() {
+    if (!this.searchTerm.trim()) {
+      this.filteredUsuarios = [...this.usuarios]
+      return
+    }
+
+    const term = this.searchTerm.toLowerCase()
+
+    this.filteredUsuarios = this.usuarios.filter(usuario => {
+      switch (this.searchType) {
+        case 'nombreusuario':
+          return (usuario.nombreUsuario || '').toLowerCase().includes(term)
+        
+        case 'nombre':
+          const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.toLowerCase()
+          return nombreCompleto.includes(term)
+        
+        case 'email':
+          return (usuario.email || '').toLowerCase().includes(term)
+        
+        case 'todos':
+        default:
+          const nombreUser = (usuario.nombreUsuario || '').toLowerCase()
+          const nombreComp = `${usuario.nombre || ''} ${usuario.apellido || ''}`.toLowerCase()
+          const email = (usuario.email || '').toLowerCase()
+          return nombreUser.includes(term) || nombreComp.includes(term) || email.includes(term)
+      }
+    })
+  }
+
   render() {
     if (!this.isAdminUser) {
       return `
@@ -63,13 +95,23 @@ export class Usuarios {
     </button>
   </div>
 
-  <div class="card-panel">
-    <div class="card-header">
-      <input 
-        type="text" 
-        class="search-box" 
-        placeholder="Buscar por nombre de usuario o correo..."
-      />
+  <div class="card" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;">
+    <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #E2E8F0;">
+      <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; align-items: flex-end;">
+        <div>
+          <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+          <select class="search-type-filter" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+            <option value="todos">Todos los campos</option>
+            <option value="nombreusuario">Nombre Usuario</option>
+            <option value="nombre">Nombre Completo</option>
+            <option value="email">Email</option>
+          </select>
+        </div>
+        <div>
+          <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+          <input type="text" class="search-box" placeholder="Ingresa tu búsqueda..." style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; outline: none; box-sizing: border-box;"/>
+        </div>
+      </div>
     </div>
 
     ${this.loading ? `
@@ -121,7 +163,18 @@ export class Usuarios {
     console.log('[USUARIOS] Configurando event listeners...')
     
     const searchBox = document.querySelector('.search-box')
+    const searchTypeSelect = document.querySelector('.search-type-filter')
     const btnAdd = document.querySelector('.btn-add-usuario')
+
+    // Listener para cambio de tipo de búsqueda
+    if (searchTypeSelect) {
+      searchTypeSelect.addEventListener('change', (e) => {
+        this.searchType = e.target.value
+        this.currentPage = 1
+        this.filtrarUsuariosLocal()
+        this.loadUsuarios()
+      })
+    }
 
     // Search
     if (searchBox) {
@@ -129,7 +182,10 @@ export class Usuarios {
         this.searchTerm = e.target.value
         this.currentPage = 1
         clearTimeout(this.searchDebounce)
-        this.searchDebounce = setTimeout(() => this.loadUsuarios(), 400)
+        this.searchDebounce = setTimeout(() => {
+          this.filtrarUsuariosLocal()
+          this.loadUsuarios()
+        }, 400)
       })
     }
 
@@ -354,8 +410,8 @@ export class Usuarios {
         if (input) {
           input.addEventListener('input', (e) => {
             let valor = e.target.value
-            // Solo letras (incluyendo acentos)
-            valor = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')
+            // Solo letras (incluyendo acentos) y sin espacios
+            valor = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, '')
             // Limitar a 20 caracteres
             valor = valor.substring(0, 20)
             e.target.value = valor
@@ -367,6 +423,33 @@ export class Usuarios {
       filtroSoloLetras('usuarioNombreUsuario')
       filtroSoloLetras('usuarioNombre')
       filtroSoloLetras('usuarioApellido')
+      
+      // Validar que contraseña no tenga espacios
+      const passwordInput = document.getElementById('usuarioPassword')
+      if (passwordInput) {
+        passwordInput.addEventListener('input', (e) => {
+          // Remover espacios de la contraseña
+          e.target.value = e.target.value.replace(/\s+/g, '')
+        })
+      }
+      
+      // Validar que confirmar contraseña no tenga espacios
+      const confirmPasswordInput = document.getElementById('usuarioConfirmPassword')
+      if (confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('input', (e) => {
+          // Remover espacios de la confirmación de contraseña
+          e.target.value = e.target.value.replace(/\s+/g, '')
+        })
+      }
+      
+      // Validar que URL de imagen no tenga espacios
+      const imagenUrlInput = document.getElementById('imagenUrl')
+      if (imagenUrlInput) {
+        imagenUrlInput.addEventListener('input', (e) => {
+          // Remover espacios de la URL
+          e.target.value = e.target.value.replace(/\s+/g, '')
+        })
+      }
       
       if (form) {
         form.addEventListener('submit', (e) => {
@@ -865,10 +948,10 @@ export class Usuarios {
           const input = document.getElementById(elementId)
           if (input) {
             input.addEventListener('input', (e) => {
-              const valor = e.target.value
-              if (!soloLetrasRegex.test(valor)) {
-                e.target.value = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')
-              }
+              let valor = e.target.value
+              // Solo letras (incluyendo acentos) y sin espacios
+              valor = valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, '')
+              e.target.value = valor
             })
           }
         }
@@ -876,6 +959,15 @@ export class Usuarios {
         // Aplicar filtro a campos de solo letras
         filtroSoloLetras('usuarioNombre')
         filtroSoloLetras('usuarioApellido')
+        
+        // Validar que URL de imagen no tenga espacios
+        const imagenUrlInput = document.getElementById('imagenUrl')
+        if (imagenUrlInput) {
+          imagenUrlInput.addEventListener('input', (e) => {
+            // Remover espacios de la URL
+            e.target.value = e.target.value.replace(/\s+/g, '')
+          })
+        }
         
         form.addEventListener('submit', (e) => {
           console.log('[USUARIOS] Submit del formulario de edición')

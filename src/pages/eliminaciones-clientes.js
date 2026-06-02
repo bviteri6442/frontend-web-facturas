@@ -9,8 +9,42 @@ export class EliminacionesClientes {
     this.itemsPerPage = 10
     this.serverTotal = 0
     this.searchTerm = ''
+    this.searchType = 'todos' // 'todos', 'nombre', 'documento', 'email'
     this.searchDebounce = null
     this.pagination = null
+  }
+
+  // Filtrar clientes según el tipo de búsqueda seleccionado
+  filtrarClientesLocal() {
+    if (!this.searchTerm.trim()) {
+      this.filtrados = [...this.clientes]
+      return
+    }
+
+    const term = this.searchTerm.toLowerCase()
+
+    this.filtrados = this.clientes.filter(cliente => {
+      switch (this.searchType) {
+        case 'nombre':
+          const nombreCompleto = `${cliente.nombre || ''} ${cliente.apellido || ''}`.toLowerCase()
+          return nombreCompleto.includes(term)
+        
+        case 'documento':
+          const documento = (cliente.documento || cliente.cedula || '').toString().toLowerCase()
+          return documento.includes(term)
+        
+        case 'email':
+          const email = (cliente.email || cliente.correo || '').toLowerCase()
+          return email.includes(term)
+        
+        case 'todos':
+        default:
+          const nombreComp = `${cliente.nombre || ''} ${cliente.apellido || ''}`.toLowerCase()
+          const doc = (cliente.documento || cliente.cedula || '').toString().toLowerCase()
+          const mail = (cliente.email || cliente.correo || '').toLowerCase()
+          return nombreComp.includes(term) || doc.includes(term) || mail.includes(term)
+      }
+    })
   }
 
   render() {
@@ -32,8 +66,22 @@ export class EliminacionesClientes {
 
         <div class="card" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;">
           <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #E2E8F0;">
-            <input type="text" id="searchDeletedClientes" placeholder="Buscar por nombre, documento, email..."
-                   style="width: 100%; padding: 0.6rem 1rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.875rem; outline: none;">
+            <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; align-items: flex-end;">
+              <div>
+                <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+                <select id="searchDeletedClientesType" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+                  <option value="todos">Todos</option>
+                  <option value="nombre">Nombre</option>
+                  <option value="documento">Documento</option>
+                  <option value="email">Email</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+                <input type="text" id="searchDeletedClientes" placeholder="Ingresa tu búsqueda..."
+                       style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; outline: none; box-sizing: border-box;">
+              </div>
+            </div>
           </div>
           <div class="card-body" style="padding: 0;">
             <div style="overflow-x: auto;">
@@ -64,11 +112,27 @@ export class EliminacionesClientes {
 
   async init() {
     await this.loadDeactivatedClients()
+    
+    // Listener para cambio de tipo de búsqueda
+    const searchTypeSelect = document.getElementById('searchDeletedClientesType')
+    if (searchTypeSelect) {
+      searchTypeSelect.addEventListener('change', (e) => {
+        this.searchType = e.target.value
+        this.currentPage = 1
+        this.filtrarClientesLocal()
+        this.renderTable()
+      })
+    }
+    
+    // Listener para búsqueda
     document.getElementById('searchDeletedClientes')?.addEventListener('input', (e) => {
       this.searchTerm = e.target.value
       this.currentPage = 1
       clearTimeout(this.searchDebounce)
-      this.searchDebounce = setTimeout(() => this.loadDeactivatedClients(), 400)
+      this.searchDebounce = setTimeout(() => {
+        this.filtrarClientesLocal()
+        this.renderTable()
+      }, 400)
     })
     document.getElementById('deletedClientsTable')?.addEventListener('click', async (e) => {
       const btn = e.target.closest('button')
@@ -91,7 +155,7 @@ export class EliminacionesClientes {
         activo: false
       })
       this.clientes = data
-      this.filtrados = data
+      this.filtrarClientesLocal()
       this.serverTotal = total
       if (!this.pagination) this.setupPagination()
       this.renderStats()

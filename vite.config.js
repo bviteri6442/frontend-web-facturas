@@ -4,13 +4,13 @@ import path from 'path'
 /** Origen del proxy /api en desarrollo (sin sufijo /api) */
 function proxyTargetFromEnv(env) {
   if (env.VITE_API_PROXY_TARGET) {
-    return env.VITE_API_PROXY_TARGET.replace(/\/api\/?$/i, '').replace(/\/+$/, '') || 'http://localhost:56398'
+    return env.VITE_API_PROXY_TARGET.replace(/\/api\/?$/i, '').replace(/\/+$/, '') || 'https://backend-facturas-production-a3ab.up.railway.app/api'
   }
   const base =
     env.VITE_API_BASE_URL ||
     env.VITE_API_URL ||
-    'http://localhost:56398/api'
-  return base.replace(/\/api\/?$/i, '') || 'http://localhost:56398'
+    'https://backend-facturas-production-a3ab.up.railway.app/api'
+  return base.replace(/\/api\/?$/i, '') || 'https://backend-facturas-production-a3ab.up.railway.app'
 }
 
 export default defineConfig(({ mode }) => {

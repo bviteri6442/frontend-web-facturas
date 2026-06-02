@@ -8,6 +8,40 @@ export class EliminacionesUsuarios {
     this.currentPage = 1
     this.itemsPerPage = 10
     this.pagination = null
+    this.searchTerm = ''
+    this.searchType = 'todos' // 'todos', 'nombreusuario', 'nombre', 'email'
+    this.searchDebounce = null
+  }
+
+  // Filtrar usuarios según el tipo de búsqueda seleccionado
+  filtrarUsuariosLocal() {
+    if (!this.searchTerm.trim()) {
+      this.filtradas = [...this.eliminaciones]
+      return
+    }
+
+    const term = this.searchTerm.toLowerCase()
+
+    this.filtradas = this.eliminaciones.filter(item => {
+      switch (this.searchType) {
+        case 'nombreusuario':
+          return (item.nombreUsuario || '').toLowerCase().includes(term)
+        
+        case 'nombre':
+          const nombreCompleto = `${item.nombre || ''} ${item.apellido || ''}`.toLowerCase()
+          return nombreCompleto.includes(term)
+        
+        case 'email':
+          return (item.email || '').toLowerCase().includes(term)
+        
+        case 'todos':
+        default:
+          const nombreUser = (item.nombreUsuario || '').toLowerCase()
+          const nombreComp = `${item.nombre || ''} ${item.apellido || ''}`.toLowerCase()
+          const email = (item.email || '').toLowerCase()
+          return nombreUser.includes(term) || nombreComp.includes(term) || email.includes(term)
+      }
+    })
   }
 
   render() {
@@ -24,8 +58,22 @@ export class EliminacionesUsuarios {
 
         <div class="card" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;">
           <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #E2E8F0;">
-            <input type="text" id="searchDeletedUsers" placeholder="Buscar por nombre, cédula, email, rol, administrador..."
-                   style="width: 100%; padding: 0.6rem 1rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.875rem; outline: none;">
+            <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; align-items: flex-end;">
+              <div>
+                <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+                <select id="searchDeletedUsersType" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+                  <option value="todos">Todos</option>
+                  <option value="nombreusuario">Nombre Usuario</option>
+                  <option value="nombre">Nombre Completo</option>
+                  <option value="email">Email</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+                <input type="text" id="searchDeletedUsers" placeholder="Ingresa tu búsqueda..."
+                       style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; outline: none; box-sizing: border-box;">
+              </div>
+            </div>
           </div>
           <div class="card-body" style="padding: 0;">
             <div style="overflow-x: auto;">
@@ -54,8 +102,25 @@ export class EliminacionesUsuarios {
 
   async init() {
     await this.loadDeletedUsers()
+    
+    // Listener para cambio de tipo de búsqueda
+    const searchTypeSelect = document.getElementById('searchDeletedUsersType')
+    if (searchTypeSelect) {
+      searchTypeSelect.addEventListener('change', (e) => {
+        this.searchType = e.target.value
+        this.filtrarUsuariosLocal()
+        this.renderTable()
+      })
+    }
+    
+    // Listener para búsqueda
     document.getElementById('searchDeletedUsers')?.addEventListener('input', (e) => {
-      this.filterUsers(e.target.value)
+      this.searchTerm = e.target.value
+      clearTimeout(this.searchDebounce)
+      this.searchDebounce = setTimeout(() => {
+        this.filtrarUsuariosLocal()
+        this.renderTable()
+      }, 400)
     })
   }
 
@@ -65,7 +130,7 @@ export class EliminacionesUsuarios {
     try {
       const response = await httpClient.get('/eliminacionesusuarios')
       this.eliminaciones = Array.isArray(response) ? response : (response?.data || [])
-      this.filtradas = [...this.eliminaciones]
+      this.filtrarUsuariosLocal()
       this.renderStats()
       this.setupPagination()
       this.renderTable(this.filtradas)

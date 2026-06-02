@@ -20,10 +20,14 @@ export class NuevaVenta {
     this.clientesPaginaActual = 1
     this.clientesTotalServidor = 0
     this.clientesSearchTerm = ''
+    this.clientesSearchType = 'todos' // 'todos', 'nombre', 'documento', 'telefono', 'correo'
+    
     this.productosPaginaActual = 1
     this.itemsPorPagina = 10
     this.searchingProductos = false
     this.terminoBusquedaProductos = ''
+    this.productosSearchType = 'todos' // 'todos', 'nombre', 'codigo', 'categoria'
+    this.productosSearchDebounce = null
   }
 
 
@@ -162,11 +166,13 @@ export class NuevaVenta {
         activo: true
       })
       this.clientes = data
+      this.filtrarClientesModal() // Aplicar filtrado local
       this.clientesTotalServidor = total
       console.log('[NuevaVenta] Clientes cargados:', this.clientes.length, 'de', total)
     } catch (error) {
       console.error('[NuevaVenta] Error cargando clientes:', error)
       this.clientes = []
+      this.filteredClientes = []
     }
   }
 
@@ -179,6 +185,7 @@ export class NuevaVenta {
       })
       const todos = result.productos || []
       this.productos = todos.filter(p => (p.stockActual || 0) > 0)
+      this.filtrarProductosModal()
       console.log('[NuevaVenta] Productos cargados (con stock):', this.productos.length)
     } catch (error) {
       console.error('[NuevaVenta] Error cargando productos:', error)
@@ -190,7 +197,7 @@ export class NuevaVenta {
     const container = document.getElementById('clientesListContainer')
     if (!container) return
 
-    const clientesAMostrar = this.clientes
+    const clientesAMostrar = this.filteredClientes
     const totalPaginas = Math.ceil(this.clientesTotalServidor / this.itemsPorPagina) || 1
     
     if (clientesAMostrar.length === 0) {
@@ -239,7 +246,7 @@ export class NuevaVenta {
     container.querySelectorAll('div[data-cliente-id]').forEach(item => {
       item.addEventListener('click', () => {
         const clienteId = item.getAttribute('data-cliente-id')
-        const cliente = this.clientes.find(c => c.id == clienteId)
+        const cliente = this.filteredClientes.find(c => c.id == clienteId)
         if (cliente) {
           this.clienteSeleccionado = cliente
           document.getElementById('clienteNombre').textContent = cliente.nombre + ' ' + (cliente.apellido || '') + ' - ' + (cliente.documento || cliente.cedula || '')
@@ -256,17 +263,100 @@ export class NuevaVenta {
     await this.loadClientes(this.clientesSearchTerm)
   }
 
+  // Filtrar clientes según el tipo de búsqueda seleccionado (sin recargar desde backend)
+  filtrarClientesModal() {
+    if (!this.clientesSearchTerm.trim()) {
+      this.filteredClientes = [...this.clientes]
+      return
+    }
+
+    const term = this.clientesSearchTerm.toLowerCase()
+
+    this.filteredClientes = this.clientes.filter(cliente => {
+      switch (this.clientesSearchType) {
+        case 'nombre':
+          const nombreCompleto = `${cliente.nombre || ''} ${cliente.apellido || ''}`.toLowerCase()
+          return nombreCompleto.includes(term)
+        
+        case 'documento':
+          const documento = (cliente.documento || cliente.cedula || '').toString().toLowerCase()
+          return documento.includes(term)
+        
+        case 'telefono':
+          const telefono = (cliente.telefono || '').toString().toLowerCase()
+          return telefono.includes(term)
+        
+        case 'correo':
+          const correo = (cliente.email || cliente.correo || '').toLowerCase()
+          return correo.includes(term)
+        
+        case 'todos':
+        default:
+          const nombreComp = `${cliente.nombre || ''} ${cliente.apellido || ''}`.toLowerCase()
+          const doc = (cliente.documento || cliente.cedula || '').toString().toLowerCase()
+          const tel = (cliente.telefono || '').toString().toLowerCase()
+          const mail = (cliente.email || cliente.correo || '').toLowerCase()
+          return nombreComp.includes(term) || doc.includes(term) || tel.includes(term) || mail.includes(term)
+      }
+    })
+  }
+
+  filtrarProductosModal() {
+    if (!this.terminoBusquedaProductos.trim()) {
+      this.filteredProductos = [...this.productos]
+      return
+    }
+
+    const term = this.terminoBusquedaProductos.toLowerCase()
+
+    this.filteredProductos = this.productos.filter(producto => {
+      switch (this.productosSearchType) {
+        case 'nombre':
+          return (producto.nombre || '').toLowerCase().includes(term)
+        
+        case 'codigo':
+          return (producto.codigo || '').toLowerCase().includes(term)
+        
+        case 'categoria':
+          return (producto.categoria || '').toLowerCase().includes(term)
+        
+        case 'todos':
+        default:
+          const nombre = (producto.nombre || '').toLowerCase()
+          const codigo = (producto.codigo || '').toLowerCase()
+          const categoria = (producto.categoria || '').toLowerCase()
+          return nombre.includes(term) || codigo.includes(term) || categoria.includes(term)
+      }
+    })
+  }
+
   async openClientesModal() {
     const modalHTML = `
       <div style="width: 100%; max-height: 500px; overflow-y: auto;">
-        <input type="text" id="searchClientesModal" placeholder="Buscar cliente por nombre, apellido o cédula..." 
-               style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #E2E8F0; border-radius: 8px; box-sizing: border-box;"/>
+        <div style="display: grid; grid-template-columns: 130px 1fr; gap: 0.75rem; margin-bottom: 15px;">
+          <div>
+            <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+            <select id="searchClientesModalType" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+              <option value="todos">Todos</option>
+              <option value="nombre">Nombre</option>
+              <option value="documento">Documento</option>
+              <option value="telefono">Teléfono</option>
+              <option value="correo">Correo</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+            <input type="text" id="searchClientesModal" placeholder="Ingresa tu búsqueda..." 
+                   style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; box-sizing: border-box;"/>
+          </div>
+        </div>
         <div id="clientesListContainer"></div>
       </div>
     `
 
     this.clientesPaginaActual = 1
     this.clientesSearchTerm = ''
+    this.clientesSearchType = 'todos'
 
     await Swal.fire({
       title: 'Seleccionar Cliente',
@@ -276,13 +366,28 @@ export class NuevaVenta {
         await this.loadClientes()
         this.renderClientesSimpleList()
         
+        const searchTypeSelect = document.getElementById('searchClientesModalType')
         const searchInput = document.getElementById('searchClientesModal')
+        
+        // Listener para cambio de tipo de búsqueda
+        if (searchTypeSelect) {
+          searchTypeSelect.addEventListener('change', (e) => {
+            this.clientesSearchType = e.target.value
+            this.clientesPaginaActual = 1
+            this.filtrarClientesModal()
+            this.renderClientesSimpleList()
+          })
+        }
+        
+        // Listener para búsqueda
         if (searchInput) {
           let debounce
           searchInput.addEventListener('input', (e) => {
             clearTimeout(debounce)
-            debounce = setTimeout(async () => {
-              await this.filterClientes(e.target.value)
+            debounce = setTimeout(() => {
+              this.clientesSearchTerm = e.target.value
+              this.clientesPaginaActual = 1
+              this.filtrarClientesModal()
               this.renderClientesSimpleList()
             }, 400)
           })
@@ -965,8 +1070,22 @@ export class NuevaVenta {
   async openProductosModal() {
     const modalHTML = `
       <div style="width: 100%; max-height: 500px; overflow-y: auto;">
-        <input type="text" id="searchProductosModal" placeholder="Buscar producto por nombre o código..." 
-               style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #E2E8F0; border-radius: 8px; box-sizing: border-box;"/>
+        <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-bottom: 1rem; align-items: flex-end;">
+          <div>
+            <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+            <select id="searchProductosModalType" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+              <option value="todos">Todos</option>
+              <option value="nombre">Nombre</option>
+              <option value="codigo">Código</option>
+              <option value="categoria">Categoría</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+            <input type="text" id="searchProductosModal" placeholder="Ingresa tu búsqueda..."
+                   style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; outline: none; box-sizing: border-box;"/>
+          </div>
+        </div>
         <div id="productosListContainer"></div>
       </div>
     `
@@ -975,6 +1094,7 @@ export class NuevaVenta {
     this.filteredProductos = []
     this.searchingProductos = false
     this.terminoBusquedaProductos = ''
+    this.productosSearchType = 'todos'
 
     // Recargar stock real antes de abrir
     await this.loadProductos()
@@ -986,11 +1106,26 @@ export class NuevaVenta {
       didOpen: () => {
         this.renderProductosSimpleList()
         
+        // Listener para cambio de tipo de búsqueda
+        const searchTypeSelect = document.getElementById('searchProductosModalType')
+        if (searchTypeSelect) {
+          searchTypeSelect.addEventListener('change', (e) => {
+            this.productosSearchType = e.target.value
+            this.filtrarProductosModal()
+            this.renderProductosSimpleList()
+          })
+        }
+        
+        // Listener para búsqueda
         const searchInput = document.getElementById('searchProductosModal')
         if (searchInput) {
           searchInput.addEventListener('input', (e) => {
-            this.filterProductos(e.target.value)
-            this.renderProductosSimpleList()
+            this.terminoBusquedaProductos = e.target.value
+            clearTimeout(this.productosSearchDebounce)
+            this.productosSearchDebounce = setTimeout(() => {
+              this.filtrarProductosModal()
+              this.renderProductosSimpleList()
+            }, 400)
           })
         }
       },

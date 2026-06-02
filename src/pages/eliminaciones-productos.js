@@ -8,6 +8,39 @@ export class EliminacionesProductos {
     this.currentPage = 1
     this.itemsPerPage = 10
     this.pagination = null
+    this.searchTerm = ''
+    this.searchType = 'todos' // 'todos', 'nombre', 'codigo', 'administrador'
+    this.searchDebounce = null
+  }
+
+  // Filtrar productos según el tipo de búsqueda seleccionado
+  filtrarProductosLocal() {
+    if (!this.searchTerm.trim()) {
+      this.filtradas = [...this.eliminaciones]
+      return
+    }
+
+    const term = this.searchTerm.toLowerCase()
+
+    this.filtradas = this.eliminaciones.filter(item => {
+      switch (this.searchType) {
+        case 'nombre':
+          return (item.nombre || '').toLowerCase().includes(term)
+        
+        case 'codigo':
+          return (item.codigo || '').toLowerCase().includes(term)
+        
+        case 'administrador':
+          return (item.eliminadoPor || '').toLowerCase().includes(term)
+        
+        case 'todos':
+        default:
+          const nombre = (item.nombre || '').toLowerCase()
+          const codigo = (item.codigo || '').toLowerCase()
+          const admin = (item.eliminadoPor || '').toLowerCase()
+          return nombre.includes(term) || codigo.includes(term) || admin.includes(term)
+      }
+    })
   }
 
   render() {
@@ -24,8 +57,22 @@ export class EliminacionesProductos {
 
         <div class="card" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;">
           <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #E2E8F0;">
-            <input type="text" id="searchDeletedProducts" placeholder="Buscar por nombre, código, administrador..."
-                   style="width: 100%; padding: 0.6rem 1rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.875rem; outline: none;">
+            <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; align-items: flex-end;">
+              <div>
+                <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Buscar por:</label>
+                <select id="searchDeletedProductsType" style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; background: #fff; cursor: pointer; box-sizing: border-box;">
+                  <option value="todos">Todos</option>
+                  <option value="nombre">Nombre</option>
+                  <option value="codigo">Código</option>
+                  <option value="administrador">Eliminado por</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.8rem; color: #475569;">Búsqueda:</label>
+                <input type="text" id="searchDeletedProducts" placeholder="Ingresa tu búsqueda..."
+                       style="width: 100%; padding: 0.5rem 0.7rem; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 0.85rem; outline: none; box-sizing: border-box;">
+              </div>
+            </div>
           </div>
           <div class="card-body" style="padding: 0;">
             <div style="overflow-x: auto;">
@@ -56,8 +103,25 @@ export class EliminacionesProductos {
 
   async init() {
     await this.loadDeletedProducts()
+    
+    // Listener para cambio de tipo de búsqueda
+    const searchTypeSelect = document.getElementById('searchDeletedProductsType')
+    if (searchTypeSelect) {
+      searchTypeSelect.addEventListener('change', (e) => {
+        this.searchType = e.target.value
+        this.filtrarProductosLocal()
+        this.renderTable()
+      })
+    }
+    
+    // Listener para búsqueda
     document.getElementById('searchDeletedProducts')?.addEventListener('input', (e) => {
-      this.filterProducts(e.target.value)
+      this.searchTerm = e.target.value
+      clearTimeout(this.searchDebounce)
+      this.searchDebounce = setTimeout(() => {
+        this.filtrarProductosLocal()
+        this.renderTable()
+      }, 400)
     })
   }
 
@@ -72,7 +136,7 @@ export class EliminacionesProductos {
         const dateB = b.fechaEliminacion ? new Date(b.fechaEliminacion) : new Date(0)
         return dateB - dateA
       })
-      this.filtradas = [...this.eliminaciones]
+      this.filtrarProductosLocal()
       this.renderStats()
       this.setupPagination()
       this.renderTable(this.filtradas)
