@@ -355,7 +355,7 @@ export class Clientes {
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Email:</label>
-          <input type="text" id="clienteEmail" placeholder="correo@ejemplo.com" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="clienteEmail" placeholder="correo@ejemplo.com" maxlength="80" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Teléfono:</label>
@@ -575,7 +575,7 @@ export class Clientes {
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Email:</label>
-          <input type="text" id="clienteEmail" placeholder="correo@ejemplo.com" value="${cliente.email || cliente.correo || ''}" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="clienteEmail" placeholder="correo@ejemplo.com" value="${cliente.email || cliente.correo || ''}" maxlength="80" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Teléfono:</label>

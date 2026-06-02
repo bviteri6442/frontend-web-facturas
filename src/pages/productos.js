@@ -330,15 +330,15 @@ export class Productos {
       <form id="productoForm" style="width: 100%;">
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Nombre: <span style="color:red">*</span></label>
-          <input type="text" id="productoNombre" placeholder="Nombre del producto" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="productoNombre" placeholder="Nombre del producto (máx 80 caracteres)" maxlength="80" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Código: <span style="color:red">*</span></label>
-          <input type="text" id="productoCodigo" placeholder="Código único" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="productoCodigo" placeholder="Código único (máx 80 caracteres)" maxlength="80" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Descripción:</label>
-          <textarea id="productoDescripcion" placeholder="Descripción del producto" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box; min-height: 60px;"></textarea>
+          <textarea id="productoDescripcion" placeholder="Descripción del producto (máx 200 caracteres)" maxlength="200" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box; min-height: 60px;"></textarea>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
           <div>
@@ -685,7 +685,7 @@ export class Productos {
       <form id="productoForm" style="width: 100%;">
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Nombre: <span style="color:red">*</span></label>
-          <input type="text" id="productoNombre" placeholder="Nombre del producto" value="${producto.nombre || ''}" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="productoNombre" placeholder="Nombre del producto (máx 80 caracteres)" value="${producto.nombre || ''}" maxlength="80" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Código:</label>
@@ -693,7 +693,7 @@ export class Productos {
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Descripción:</label>
-          <textarea id="productoDescripcion" placeholder="Descripción del producto" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box; min-height: 60px;">${producto.descripcion || ''}</textarea>
+          <textarea id="productoDescripcion" placeholder="Descripción del producto (máx 200 caracteres)" maxlength="200" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box; min-height: 60px;">${producto.descripcion || ''}</textarea>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
           <div>

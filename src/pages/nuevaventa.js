@@ -852,7 +852,7 @@ export class NuevaVenta {
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Email:</label>
-          <input type="text" id="nuevoClienteEmail" placeholder="correo@ejemplo.com" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="nuevoClienteEmail" placeholder="correo@ejemplo.com" maxlength="80" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
           <div id="emailError" style="color: #EF4444; font-size: 13px; margin-top: 5px; display: none;"></div>
         </div>
         <div style="margin-bottom: 15px;">
