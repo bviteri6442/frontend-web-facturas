@@ -2,6 +2,7 @@ import { ventaService } from '../services/ventaService.js'
 import { clienteService } from '../services/clienteService.js'
 import { productoService } from '../services/productoService.js'
 import { showErrorAlert, showSuccessAlert } from '../utils/errorHandler.js'
+import { validarCedula, obtenerErrorCedula } from '../utils/cedulaValidator.js'
 import Swal from 'sweetalert2'
 
 const IVA_PERCENTAGE = 0.19
@@ -635,21 +636,44 @@ export class NuevaVenta {
       // Validaciones
       if (!this.clienteSeleccionado) {
         const result = await Swal.fire({
-          icon: 'warning',
+          icon: 'question',
           title: 'Cliente no seleccionado',
-          html: '<p>No has seleccionado un cliente. ¿Deseas registrar un nuevo cliente?</p>',
+          html: '<p>No has seleccionado un cliente para esta venta.</p><p style="color: #64748B; font-size: 13px; margin-top: 8px;">¿Qué deseas hacer?</p>',
+          showDenyButton: true,
           showCancelButton: true,
-          confirmButtonText: 'Registrar nuevo cliente',
+          confirmButtonText: '<i class="fas fa-plus" style="margin-right: 5px;"></i>Registrar cliente',
+          denyButtonText: '<i class="fas fa-user" style="margin-right: 5px;"></i>Consumidor Final',
           cancelButtonText: 'Cancelar',
           confirmButtonColor: '#4ea93b',
-          cancelButtonColor: '#94A3B8'
+          denyButtonColor: '#6366F1',
+          cancelButtonColor: '#94A3B8',
+          focusCancel: true
         })
         
         if (result.isConfirmed) {
           // Abrir modal de creación de cliente
           await this.openClienteModal()
+          // Si después de registrar el cliente se seleccionó uno, continuar con la venta
+          if (!this.clienteSeleccionado) return
+          // Si se seleccionó, reintentar guardar
+          return this.saveVenta()
+        } else if (result.isDenied) {
+          // Guardar como Consumidor Final
+          this.clienteSeleccionado = {
+            id: null,
+            nombre: 'Consumidor',
+            apellido: 'Final',
+            documento: '9999999999999',
+            esConsumidorFinal: true
+          }
+          const clienteNombreEl = document.getElementById('clienteNombre')
+          const clienteSeleccionadoEl = document.getElementById('clienteSeleccionado')
+          if (clienteNombreEl) clienteNombreEl.textContent = 'Consumidor Final'
+          if (clienteSeleccionadoEl) clienteSeleccionadoEl.style.display = 'block'
+        } else {
+          // Canceló
+          return
         }
-        return
       }
 
       if (this.detalles.length === 0) {
@@ -811,28 +835,31 @@ export class NuevaVenta {
 
   async openClienteModal() {
     const formHTML = `
-      <form id="clienteFormModal" style="width: 100%;">
+      <form id="clienteFormModal" novalidate style="width: 100%;">
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Nombre: <span style="color:red">*</span></label>
-          <input type="text" id="nuevoClienteNombre" placeholder="Nombre del cliente" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="nuevoClienteNombre" placeholder="Nombre (máx 20 letras)" maxlength="20" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Apellido: <span style="color:red">*</span></label>
-          <input type="text" id="nuevoClienteApellido" placeholder="Apellido del cliente" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="nuevoClienteApellido" placeholder="Apellido (máx 20 letras)" maxlength="20" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
         </div>
         <div style="margin-bottom: 15px;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Cédula: <span style="color:red">*</span></label>
-          <input type="text" id="nuevoClienteCedula" placeholder="Cédula de identidad" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Cédula/Documento: <span style="color:red">*</span></label>
+          <input type="text" id="nuevoClienteCedula" placeholder="17-056-789-01 (formato: XX-XXX-XXX-X)" maxlength="13" required style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <small style="color: #64748B; font-size: 12px; display: block; margin-top: 5px;">10 dígitos, máscara automática XX-XXX-XXX-X</small>
           <div id="cedulaError" style="color: #EF4444; font-size: 13px; margin-top: 5px; display: none;"></div>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Email:</label>
-          <input type="text" id="nuevoClienteEmail" placeholder="email@ejemplo.com" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="text" id="nuevoClienteEmail" placeholder="correo@ejemplo.com" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
           <div id="emailError" style="color: #EF4444; font-size: 13px; margin-top: 5px; display: none;"></div>
         </div>
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #0F172A;">Teléfono:</label>
-          <input type="text" id="nuevoClienteTelefono" placeholder="Número de teléfono" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <input type="tel" id="nuevoClienteTelefono" placeholder="09-8765-4321 (formato: 09-XXXX-XXXX)" maxlength="12" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; box-sizing: border-box;"/>
+          <small style="color: #64748B; font-size: 12px; display: block; margin-top: 5px;">7-10 dígitos, máscara automática 09-XXXX-XXXX</small>
+          <div id="telefonoError" style="color: #EF4444; font-size: 13px; margin-top: 5px; display: none;"></div>
         </div>
         <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 25px;">
           <button type="button" id="btnCancelarCliente" style="padding: 10px 20px; background: #E2E8F0; color: #1E293B; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancelar</button>
@@ -851,6 +878,11 @@ export class NuevaVenta {
         const cedulaErrorDiv = document.getElementById('cedulaError')
         const emailErrorDiv = document.getElementById('emailError')
         const emailInput = document.getElementById('nuevoClienteEmail')
+        const nombreInput = document.getElementById('nuevoClienteNombre')
+        const apellidoInput = document.getElementById('nuevoClienteApellido')
+        const cedulaInput = document.getElementById('nuevoClienteCedula')
+        const telefonoInput = document.getElementById('nuevoClienteTelefono')
+        const telefonoErrorDiv = document.getElementById('telefonoError')
         
         if (btnCancel) {
           btnCancel.addEventListener('click', () => {
@@ -858,22 +890,72 @@ export class NuevaVenta {
           })
         }
 
-        // Bloquear espacios en el email (como funciona en apellido)
+        // === VALIDACIÓN EN TIEMPO REAL ===
+        
+        // Solo letras sin espacios en Nombre y Apellido (mismo patrón que clientes.js)
+        const onlyLetters = (el) => {
+          if (!el) return
+          el.addEventListener('keydown', (ev) => {
+            if (ev.key === ' ' || ev.code === 'Space') ev.preventDefault()
+          })
+          el.addEventListener('input', (ev) => {
+            const cleaned = ev.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, '')
+            if (cleaned !== ev.target.value) ev.target.value = cleaned
+          })
+        }
+        onlyLetters(nombreInput)
+        onlyLetters(apellidoInput)
+
+        // Máscara de cédula: solo números con formato XX-XXX-XXX-X (mismo patrón que clientes.js)
+        if (cedulaInput) {
+          cedulaInput.addEventListener('input', (e) => {
+            let valor = e.target.value.replace(/[^0-9]/g, '')
+            if (valor.length > 0) {
+              valor = valor.substring(0, 10)
+              if (valor.length <= 2) {
+                e.target.value = valor
+              } else if (valor.length <= 5) {
+                e.target.value = valor.substring(0, 2) + '-' + valor.substring(2)
+              } else if (valor.length <= 8) {
+                e.target.value = valor.substring(0, 2) + '-' + valor.substring(2, 5) + '-' + valor.substring(5)
+              } else {
+                e.target.value = valor.substring(0, 2) + '-' + valor.substring(2, 5) + '-' + valor.substring(5, 8) + '-' + valor.substring(8)
+              }
+            } else {
+              e.target.value = valor
+            }
+            // Limpiar error de cédula al escribir
+            cedulaErrorDiv.style.display = 'none'
+            cedulaErrorDiv.textContent = ''
+          })
+        }
+
+        // Máscara de teléfono: solo números con formato 09-XXXX-XXXX (mismo patrón que clientes.js)
+        if (telefonoInput) {
+          telefonoInput.addEventListener('input', (e) => {
+            let valor = e.target.value.replace(/[^0-9]/g, '')
+            valor = valor.substring(0, 10)
+            if (valor.length > 0) {
+              if (valor.length <= 2) {
+                e.target.value = valor
+              } else if (valor.length <= 6) {
+                e.target.value = valor.substring(0, 2) + '-' + valor.substring(2)
+              } else {
+                e.target.value = valor.substring(0, 2) + '-' + valor.substring(2, 6) + '-' + valor.substring(6)
+              }
+            } else {
+              e.target.value = valor
+            }
+          })
+        }
+
+        // Bloquear espacios en el email
         if (emailInput) {
           emailInput.addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/\s/g, '')
-          })
-
-          // Validación de email en tiempo real
-          emailInput.addEventListener('blur', () => {
-            const email = emailInput.value.trim()
-            if (email && !this.isValidEmail(email)) {
-              emailErrorDiv.textContent = 'Formato de email inválido'
-              emailErrorDiv.style.display = 'block'
-            } else {
-              emailErrorDiv.style.display = 'none'
-              emailErrorDiv.textContent = ''
-            }
+            // Limpiar error de email al escribir
+            emailErrorDiv.style.display = 'none'
+            emailErrorDiv.textContent = ''
           })
         }
 
@@ -883,9 +965,11 @@ export class NuevaVenta {
             
             const nombre = document.getElementById('nuevoClienteNombre').value.trim()
             const apellido = document.getElementById('nuevoClienteApellido').value.trim()
-            const cedula = document.getElementById('nuevoClienteCedula').value.trim()
+            const cedulaRaw = document.getElementById('nuevoClienteCedula').value.trim()
+            const cedula = cedulaRaw.replace(/[^0-9]/g, '') // Remover guiones para validación
             const email = document.getElementById('nuevoClienteEmail').value.trim()
-            const telefono = document.getElementById('nuevoClienteTelefono').value.trim()
+            const telefonoRaw = document.getElementById('nuevoClienteTelefono').value.trim()
+            const telefono = telefonoRaw.replace(/[^0-9]/g, '') // Remover guiones para validación
 
             // Limpiar errores anteriores
             cedulaErrorDiv.style.display = 'none'
@@ -894,7 +978,27 @@ export class NuevaVenta {
             emailErrorDiv.textContent = ''
 
             if (!nombre || !apellido || !cedula) {
-              Swal.fire({ icon: 'warning', title: 'Campos requeridos', text: 'Por favor completa Nombre, Apellido y Cédula.', confirmButtonColor: '#4ea93b' })
+              // Mostrar errores inline debajo de cada campo vacío
+              if (!nombre) {
+                nombreInput.style.borderColor = '#EF4444'
+                setTimeout(() => { nombreInput.style.borderColor = '#E2E8F0' }, 3000)
+              }
+              if (!apellido) {
+                apellidoInput.style.borderColor = '#EF4444'
+                setTimeout(() => { apellidoInput.style.borderColor = '#E2E8F0' }, 3000)
+              }
+              if (!cedula) {
+                cedulaErrorDiv.textContent = 'La cédula es obligatoria.'
+                cedulaErrorDiv.style.display = 'block'
+              }
+              return
+            }
+
+            // Validación de cédula ecuatoriana (Módulo 10)
+            if (cedula && !validarCedula(cedula)) {
+              const errorMsg = obtenerErrorCedula(cedula)
+              cedulaErrorDiv.textContent = errorMsg || 'La cédula ecuatoriana no es válida.'
+              cedulaErrorDiv.style.display = 'block'
               return
             }
 
@@ -902,6 +1006,13 @@ export class NuevaVenta {
             if (email && !this.isValidEmail(email)) {
               emailErrorDiv.textContent = 'Formato de email inválido'
               emailErrorDiv.style.display = 'block'
+              return
+            }
+
+            // Validar teléfono si está presente (7-10 dígitos)
+            if (telefono && !/^\d{7,10}$/.test(telefono)) {
+              telefonoErrorDiv.textContent = 'El teléfono debe contener entre 7 y 10 dígitos numéricos.'
+              telefonoErrorDiv.style.display = 'block'
               return
             }
 
@@ -915,19 +1026,32 @@ export class NuevaVenta {
               })
 
               if (nuevoCliente) {
-                // Agregar el nuevo cliente a la lista
+                // Agregar el nuevo cliente a la lista y seleccionarlo
                 this.clientes.push(nuevoCliente)
                 this.clienteSeleccionado = nuevoCliente
-                document.getElementById('clienteInput').value = nuevoCliente.nombre + ' ' + (nuevoCliente.apellido || '')
-                document.getElementById('clienteNombre').textContent = nuevoCliente.nombre + ' ' + (nuevoCliente.apellido || '') + ' - ' + (nuevoCliente.documento || '')
-                document.getElementById('clienteSeleccionado').style.display = 'block'
+                this.hasUnsavedChanges = true
                 
+                // Actualizar la vista de la factura con el cliente seleccionado
+                const clienteNombreEl = document.getElementById('clienteNombre')
+                const clienteSeleccionadoEl = document.getElementById('clienteSeleccionado')
+                if (clienteNombreEl) {
+                  clienteNombreEl.textContent = nuevoCliente.nombre + ' ' + (nuevoCliente.apellido || '') + ' - ' + (nuevoCliente.documento || '')
+                }
+                if (clienteSeleccionadoEl) {
+                  clienteSeleccionadoEl.style.display = 'block'
+                }
+                
+                // Cerrar modal de registro y mostrar mensaje de éxito
                 Swal.close()
+                
+                // Usar toast para no bloquear la UI
                 Swal.fire({
                   icon: 'success',
-                  title: '¡Éxito!',
-                  text: 'Cliente registrado correctamente',
-                  confirmButtonColor: '#10B981'
+                  title: '¡Cliente registrado!',
+                  text: nuevoCliente.nombre + ' ' + (nuevoCliente.apellido || '') + ' ha sido seleccionado para la venta.',
+                  confirmButtonColor: '#10B981',
+                  timer: 3000,
+                  timerProgressBar: true
                 })
               }
             } catch (error) {
@@ -940,12 +1064,9 @@ export class NuevaVenta {
                 cedulaErrorDiv.textContent = error.message || 'Error con la cédula'
                 cedulaErrorDiv.style.display = 'block'
               } else {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Error',
-                  text: error.message || 'No se pudo crear el cliente',
-                  confirmButtonColor: '#f05454'
-                })
+                // Error genérico - mostrar inline si es posible
+                cedulaErrorDiv.textContent = error.message || 'No se pudo crear el cliente'
+                cedulaErrorDiv.style.display = 'block'
               }
             }
           })
